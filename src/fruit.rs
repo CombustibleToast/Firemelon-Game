@@ -73,12 +73,17 @@ impl Fruit<'_>{
 
 fn update_velocity(fruit: &mut Fruit){
     let maxvel: FixedNum<8> = num!(5.0);
+    //Apply gravity
     fruit.vel.y += num!(0.1); //gravity because I cant do const = num!(0.5) for some reason
     //Clamp crashes so we do it manually
     if fruit.vel.y > maxvel {
-        println!("Fruit Exeeded max velocity");
+        println!("Fruit {} exceeded max velocity!", fruit.id);
         fruit.vel.y = maxvel;
     }
+
+    //Apply drag
+    let drag_vector = num!(0.99);
+    fruit.vel *= drag_vector;
 }
 
 fn apply_velocity(fruit: &mut Fruit){
@@ -89,13 +94,16 @@ fn check_wall_collisions(fruit: &mut Fruit){
     //Check wall collisions, modify vel, clamp position if necessary
     if fruit.pos.x <= num!(0.0){
         fruit.vel.x = num!(0.0);
+        fruit.pos.x = num!(0.0);
     }
     if fruit.pos.x >= (WIDTH - fruit.size as i32).into(){
         fruit.vel.x = num!(0.0);
+        fruit.pos.x = (WIDTH - fruit.size as i32).into();
     }
     //Remember that max height is the bottom of the screen
     if fruit.pos.y >= (HEIGHT - fruit.size as i32).into(){
         fruit.vel.y = num!(0.0);
+        fruit.pos.y = (HEIGHT - fruit.size as i32).into();
     }
     //No need to check the top of the screen yet, that's the loss condition.    
 }
