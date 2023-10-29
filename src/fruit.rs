@@ -28,7 +28,7 @@ pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites
         pos: pos.clone(),
         vel: Vector2D::<FixedNum<8>> {x: num!(0.0), y: num!(0.0)},
         stage: stage,
-        size: stage + 2,
+        size: stage + 3,
         is_freefall: false,
         sprites: sprites,
         object: object
@@ -59,7 +59,7 @@ impl Fruit<'_>{
 
         //Detect Collisions
         check_wall_collisions(self);
-        check_other_fruit_collisions(self, others); 
+        //check_other_fruit_collisions(self, others); 
         
         //Apply velocity
         apply_velocity(self);
@@ -73,7 +73,7 @@ impl Fruit<'_>{
 
 fn update_velocity(fruit: &mut Fruit){
     let maxvel: FixedNum<8> = num!(5.0);
-    fruit.vel.y += num!(0.5); //gravity because I cant do const = num!(0.5) for some reason
+    fruit.vel.y += num!(0.1); //gravity because I cant do const = num!(0.5) for some reason
     //Clamp crashes so we do it manually
     if fruit.vel.y > maxvel {
         println!("Fruit Exeeded max velocity");

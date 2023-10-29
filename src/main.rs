@@ -51,7 +51,7 @@ fn main(mut gba: agb::Gba) -> ! {
     //Bootstrap fruit engine lol
     //let initial_pos: Vector2D<FixedNum<8>> = Vector2D::new((WIDTH/2).into(), (HEIGHT+5).into());
     let initial_pos: Vector2D<FixedNum<8>> = Vector2D::new(num!(50.0), num!(50.0));
-    let mut held_fruit: Fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), 6, 0);
+    let mut held_fruit: Fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), 0, 0);
     
     //Core Loop
     loop {
@@ -63,7 +63,7 @@ fn main(mut gba: agb::Gba) -> ! {
             //Fruit was just dropped, create new fruit
             //Create position - For now it's a default value, will be set to the player's pos in the future
             let initial_pos: Vector2D<FixedNum<8>> = Vector2D::new((WIDTH/2).into(), (5).into());
-            held_fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), 1, fruit_objects.len() as i32);
+            held_fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), (fruit_objects.len() as i8)%11, fruit_objects.len() as i32);
             held_fruit.object.show();
         }
 
