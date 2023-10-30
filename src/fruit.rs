@@ -109,6 +109,9 @@ fn check_wall_collisions(fruit: &mut Fruit){
 }
 
 fn check_other_fruit_collisions(fruit: &mut Fruit, others: &mut [Fruit]){
+    //Radius of the fruit = 1/2 size.
+    //Center of the fruit is NOT at its coordinates. Its coordinates represent where the top left of its sprite is!
+    //TODO: IMPLEMENT THE ABOVE CHANGE
     //Really bad algorithm: check all other fruits to see if they're in touching distance
     for other in others{
         //Find vector pointing from other to self
