@@ -99,8 +99,9 @@ fn apply_velocity(fruit: &mut Fruit){
 
 fn check_wall_collisions(fruit: &mut Fruit){
     //Check wall collisions, modify vel, clamp position if necessary
-    let x_min = (0 - SPRITE_SIZE - fruit.size as i32).into();
+    let x_min = (0 - SPRITE_SIZE as i32).into();
     let x_max = (WIDTH - SPRITE_SIZE - fruit.size as i32).into();
+    let y_min = (0 - SPRITE_SIZE as i32).into();
     let y_max = (HEIGHT - SPRITE_SIZE - fruit.size as i32).into();
     let restitution = num!(0.5);
 
@@ -112,6 +113,10 @@ fn check_wall_collisions(fruit: &mut Fruit){
         fruit.vel.x = -fruit.vel.x * restitution;
         fruit.pos.x = x_max;
     }
+    if fruit.pos.y <= y_min{
+        fruit.vel.y = -fruit.vel.y * restitution;
+        fruit.pos.y = y_min;
+    }
     //Remember that max height is the bottom of the screen
     if fruit.pos.y >= y_max{
         fruit.vel.y = -fruit.vel.y * restitution;
@@ -121,9 +126,6 @@ fn check_wall_collisions(fruit: &mut Fruit){
 }
 
 fn check_other_fruit_collisions(fruit: &mut Fruit, others: &mut [Fruit]){
-    //Radius of the fruit = 1/2 size.
-    //Center of the fruit is NOT at its coordinates. Its coordinates represent where the top left of its sprite is!
-    //TODO: IMPLEMENT THE ABOVE CHANGE
     //Really bad algorithm: check all other fruits to see if they're in touching distance
     let unit_vector: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
     let this_physic_center: Vector2D<FixedNum<8>> = fruit.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
