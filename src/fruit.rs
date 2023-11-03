@@ -2,31 +2,38 @@ use agb::{
     display::object::{Object, SpriteVram, Graphics, include_aseprite, Sprite, OamManaged},
     display::{HEIGHT, WIDTH},
     fixnum::{FixedNum, Vector2D, num, Num}, println,
+    rng,
 };
 use alloc::vec::Vec;
 
-//const GRAVITY: FixedNum<8> = num!(0.5);
+// const GRAVITY: FixedNum<8> = num!(0.5);
+// const UNIT_VECTOR: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
 
 pub struct Fruit<'a>{
     id: i32,
     pos: Vector2D<FixedNum<8>>,
     vel: Vector2D<FixedNum<8>>,
-    stage: i8,
-    size: i8,
+    stage: i32,
+    size: i32,
     is_freefall: bool,
     sprites: &'a [SpriteVram],
     pub object: Object<'a>,
 }
 
-pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites: &'a [SpriteVram], stage: i8, id: i32) -> Fruit<'a>{
+pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites: &'a [SpriteVram], stage: i32, id: i32) -> Fruit<'a>{
     println!("Creating fruit!!");
     //Create oam object
     let object = oam.object(sprites[stage as usize].clone());
 
+    //for testing, create a random velocity
+    let randvel: Vector2D<FixedNum<8>> = Vector2D { x: (rng::gen()%6 - 3).into(), y: (rng::gen()%6 - 3).into() };
+    println!("generated a random vel {}, {}", randvel.x, randvel.y);
+
     let mut fruit = Fruit{
         id: id,
         pos: pos.clone(),
-        vel: Vector2D::<FixedNum<8>> {x: num!(0.0), y: num!(0.0)},
+        //vel: Vector2D::<FixedNum<8>> {x: num!(0.0), y: num!(0.0)},
+        vel: randvel,
         stage: stage,
         size: stage + 3,
         is_freefall: false,
@@ -49,17 +56,16 @@ impl Fruit<'_>{
 
     pub fn update(&mut self, others: &mut [Fruit]){
         if self.id == 1 {
-            println!("Updating fruit");
-            println!("Pos: {}, {}", self.pos.x, self.pos.y);
-            println!("Vel: {}, {}", self.vel.x, self.vel.y);
+            // println!("Updating fruit");
+            // println!("Pos: {}, {}", self.pos.x, self.pos.y);
+            // println!("Vel: {}, {}", self.vel.x, self.vel.y);
         }
         //Update velocity
         update_velocity(self);
-        //agb::println!("y vel: {}", self.vel.y);
 
         //Detect Collisions
         check_wall_collisions(self);
-        //check_other_fruit_collisions(self, others); 
+        check_other_fruit_collisions(self, others); 
         
         //Apply velocity
         apply_velocity(self);
@@ -93,16 +99,16 @@ fn apply_velocity(fruit: &mut Fruit){
 fn check_wall_collisions(fruit: &mut Fruit){
     //Check wall collisions, modify vel, clamp position if necessary
     if fruit.pos.x <= num!(0.0){
-        fruit.vel.x = num!(0.0);
+        fruit.vel.x = -fruit.vel.x * num!(0.5);
         fruit.pos.x = num!(0.0);
     }
     if fruit.pos.x >= (WIDTH - fruit.size as i32).into(){
-        fruit.vel.x = num!(0.0);
+        fruit.vel.x = -fruit.vel.x * num!(0.5); //0.5 is restitution
         fruit.pos.x = (WIDTH - fruit.size as i32).into();
     }
     //Remember that max height is the bottom of the screen
     if fruit.pos.y >= (HEIGHT - fruit.size as i32).into(){
-        fruit.vel.y = num!(0.0);
+        fruit.vel.y = -fruit.vel.y * num!(0.5);
         fruit.pos.y = (HEIGHT - fruit.size as i32).into();
     }
     //No need to check the top of the screen yet, that's the loss condition.    
@@ -113,9 +119,13 @@ fn check_other_fruit_collisions(fruit: &mut Fruit, others: &mut [Fruit]){
     //Center of the fruit is NOT at its coordinates. Its coordinates represent where the top left of its sprite is!
     //TODO: IMPLEMENT THE ABOVE CHANGE
     //Really bad algorithm: check all other fruits to see if they're in touching distance
+    let unit_vector: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
+    let this_physic_center: Vector2D<FixedNum<8>> = fruit.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(fruit.size)/num!(2.0));
+
     for other in others{
         //Find vector pointing from other to self
-        let difference_vector = fruit.pos - other.pos;
+        let other_physic_center: Vector2D<FixedNum<8>> = other.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(other.size)/num!(2.0));
+        let difference_vector = this_physic_center - other_physic_center;
 
         //Move apart if they're too close. They are touching when the magnitude <= sum of radii
         let overlap = difference_vector.fast_magnitude();
@@ -126,6 +136,9 @@ fn check_other_fruit_collisions(fruit: &mut Fruit, others: &mut [Fruit]){
             fruit.pos += move_vector;
 
             //Change velocity vector of both by the collision force
+            //for now just move in opposite directions with restitution, not accurate though
+            fruit.vel = difference_vector.fast_normalise() * fruit.vel.fast_magnitude() * num!(0.5);
+            other.vel = difference_vector.fast_normalise() * other.vel.fast_magnitude() * num!(0.5) * -1;
         }
     }
 }
