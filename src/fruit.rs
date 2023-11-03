@@ -8,6 +8,7 @@ use alloc::vec::Vec;
 
 // const GRAVITY: FixedNum<8> = num!(0.5);
 // const UNIT_VECTOR: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
+const SPRITE_SIZE: i32 = 8;
 
 pub struct Fruit<'a>{
     id: i32,
@@ -98,18 +99,22 @@ fn apply_velocity(fruit: &mut Fruit){
 
 fn check_wall_collisions(fruit: &mut Fruit){
     //Check wall collisions, modify vel, clamp position if necessary
-    if fruit.pos.x <= num!(0.0){
+    let x_min = (0 - SPRITE_SIZE - fruit.size as i32).into();
+    let x_max = (WIDTH - SPRITE_SIZE - fruit.size as i32).into();
+    let y_max = (HEIGHT - SPRITE_SIZE - fruit.size as i32).into();
+
+    if fruit.pos.x <= x_min {
         fruit.vel.x = -fruit.vel.x * num!(0.5);
-        fruit.pos.x = num!(0.0);
+        fruit.pos.x = x_min;
     }
-    if fruit.pos.x >= (WIDTH - fruit.size as i32).into(){
+    if fruit.pos.x >= x_max{
         fruit.vel.x = -fruit.vel.x * num!(0.5); //0.5 is restitution
-        fruit.pos.x = (WIDTH - fruit.size as i32).into();
+        fruit.pos.x = x_max;
     }
     //Remember that max height is the bottom of the screen
-    if fruit.pos.y >= (HEIGHT - fruit.size as i32).into(){
+    if fruit.pos.y >= y_max{
         fruit.vel.y = -fruit.vel.y * num!(0.5);
-        fruit.pos.y = (HEIGHT - fruit.size as i32).into();
+        fruit.pos.y = y_max;
     }
     //No need to check the top of the screen yet, that's the loss condition.    
 }
