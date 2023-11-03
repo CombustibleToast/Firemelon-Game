@@ -57,9 +57,9 @@ impl Fruit<'_>{
 
     pub fn update(&mut self, others: &mut [Fruit]){
         if self.id == 1 {
-            // println!("Updating fruit");
-            // println!("Pos: {}, {}", self.pos.x, self.pos.y);
-            // println!("Vel: {}, {}", self.vel.x, self.vel.y);
+            println!("Updating fruit");
+            println!("Pos: {}, {}", self.pos.x, self.pos.y);
+            println!("Vel: {}, {}", self.vel.x, self.vel.y);
         }
         //Update velocity
         update_velocity(self);
@@ -102,18 +102,19 @@ fn check_wall_collisions(fruit: &mut Fruit){
     let x_min = (0 - SPRITE_SIZE - fruit.size as i32).into();
     let x_max = (WIDTH - SPRITE_SIZE - fruit.size as i32).into();
     let y_max = (HEIGHT - SPRITE_SIZE - fruit.size as i32).into();
+    let restitution = num!(0.5);
 
     if fruit.pos.x <= x_min {
-        fruit.vel.x = -fruit.vel.x * num!(0.5);
+        fruit.vel.x = -fruit.vel.x * restitution;
         fruit.pos.x = x_min;
     }
     if fruit.pos.x >= x_max{
-        fruit.vel.x = -fruit.vel.x * num!(0.5); //0.5 is restitution
+        fruit.vel.x = -fruit.vel.x * restitution;
         fruit.pos.x = x_max;
     }
     //Remember that max height is the bottom of the screen
     if fruit.pos.y >= y_max{
-        fruit.vel.y = -fruit.vel.y * num!(0.5);
+        fruit.vel.y = -fruit.vel.y * restitution;
         fruit.pos.y = y_max;
     }
     //No need to check the top of the screen yet, that's the loss condition.    
