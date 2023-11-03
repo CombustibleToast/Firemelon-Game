@@ -125,16 +125,16 @@ fn check_other_fruit_collisions(fruit: &mut Fruit, others: &mut [Fruit]){
     //TODO: IMPLEMENT THE ABOVE CHANGE
     //Really bad algorithm: check all other fruits to see if they're in touching distance
     let unit_vector: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
-    let this_physic_center: Vector2D<FixedNum<8>> = fruit.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(fruit.size)/num!(2.0));
+    let this_physic_center: Vector2D<FixedNum<8>> = fruit.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
 
     for other in others{
         //Find vector pointing from other to self
-        let other_physic_center: Vector2D<FixedNum<8>> = other.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(other.size)/num!(2.0));
+        let other_physic_center: Vector2D<FixedNum<8>> = other.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
         let difference_vector = this_physic_center - other_physic_center;
 
         //Move apart if they're too close. They are touching when the magnitude <= sum of radii
         let overlap = difference_vector.fast_magnitude();
-        if overlap <= ((fruit.size + other.size) as i32).into(){
+        if overlap <= (((fruit.size + other.size) as i32)/2).into(){
             //A collision has occurred
             //This needs to move away from other by the amount they are overlapping
             let move_vector = difference_vector.fast_normalise() * overlap;
