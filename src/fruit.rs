@@ -125,6 +125,14 @@ fn check_wall_collisions(fruit: &mut Fruit){
     //No need to check the top of the screen yet, that's the loss condition.    
 }
 
+fn try_merge_fruits(fruit: &mut Fruit, other: &mut Fruit, all: &mut [Fruit]) -> bool{
+    if fruit.stage != other.stage {
+        return false;
+    }
+
+    return true;
+}
+
 fn check_other_fruit_collisions(fruit: &mut Fruit, others: &mut [Fruit]){
     //Really bad algorithm: check all other fruits to see if they're in touching distance
     let unit_vector: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
@@ -136,12 +144,17 @@ fn check_other_fruit_collisions(fruit: &mut Fruit, others: &mut [Fruit]){
         let difference_vector = this_physic_center - other_physic_center;
 
         //Move apart if they're too close. They are touching when the magnitude <= sum of radii
-        let overlap = difference_vector.fast_magnitude();
-        if overlap <= (((fruit.size + other.size) as i32)/2).into(){
+        let overlap = -(difference_vector.fast_magnitude() - fruit.size/2 - other.size/2);
+        if overlap > 0.into() {
             //A collision has occurred
-            //This needs to move away from other by the amount they are overlapping
+            //The one with the lowest y pos needs to move away from other by the amount they are overlapping
             let move_vector = difference_vector.fast_normalise() * overlap;
-            fruit.pos += move_vector;
+            if(fruit.pos.y < other.pos.y){
+                fruit.pos += move_vector;
+            }
+            else {
+                other.pos -= move_vector; //if the other one needs to move, it should be in the other direction
+            }
 
             //Change velocity vector of both by the collision force
             //for now just move in opposite directions with restitution, not accurate though
