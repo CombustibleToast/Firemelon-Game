@@ -69,6 +69,7 @@ impl Fruit<'_>{
         check_other_fruit_collisions(self, others); 
         
         //Apply velocity
+        polish_velocity(self);
         apply_velocity(self);
 
         //Try to merge with other fruit
@@ -91,6 +92,12 @@ fn update_velocity(fruit: &mut Fruit){
     //Apply drag
     let drag_vector = num!(0.99);
     fruit.vel *= drag_vector;
+}
+
+fn polish_velocity(fruit: &mut Fruit){
+    if fruit.vel.y < num!(0.05) {
+        fruit.vel.y = num!(0.0);
+    }
 }
 
 fn apply_velocity(fruit: &mut Fruit){
@@ -149,7 +156,7 @@ fn check_other_fruit_collisions(fruit: &mut Fruit, others: &mut [Fruit]){
             //A collision has occurred
             //The one with the lowest y pos needs to move away from other by the amount they are overlapping
             let move_vector = difference_vector.fast_normalise() * overlap;
-            if(fruit.pos.y < other.pos.y){
+            if fruit.pos.y < other.pos.y {
                 fruit.pos += move_vector;
             }
             else {
