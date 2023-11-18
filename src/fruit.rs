@@ -1,10 +1,12 @@
+use core::borrow::BorrowMut;
+
 use agb::{
     display::object::{Object, SpriteVram, Graphics, include_aseprite, Sprite, OamManaged},
     display::{HEIGHT, WIDTH},
     fixnum::{FixedNum, Vector2D, num, Num}, println,
     rng,
 };
-use alloc::vec::Vec;
+use alloc::{vec::Vec, slice};
 
 // const GRAVITY: FixedNum<8> = num!(0.5);
 // const UNIT_VECTOR: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
@@ -66,7 +68,8 @@ impl Fruit<'_>{
 
         //Detect Collisions
         check_wall_collisions(self);
-        check_other_fruit_collisions(self, others); 
+        //Collisions with other fruit handled in updateallfruit
+        //let mut fruitCollisions : Vec<(&Fruit,&Fruit)> = check_other_fruit_collisions(self, others, &mut fruitCollisions); 
         
         //Apply velocity
         polish_velocity(self);
@@ -140,38 +143,58 @@ fn try_merge_fruits(fruit: &mut Fruit, other: &mut Fruit, all: &mut [Fruit]) -> 
     return true;
 }
 
-fn check_other_fruit_collisions(fruit: &mut Fruit, others: &mut [Fruit]){
-    //Really bad algorithm: check all other fruits to see if they're in touching distance
+fn find_all_fruit_collisions(mut fruits: Vec<Fruit>) -> (Vec<Fruit>, Vec<(&Fruit,&Fruit)>){
+    //Storage
+    let mut collisions : Vec<(&Fruit,&Fruit)> = Vec::new();
     let unit_vector: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
-    let this_physic_center: Vector2D<FixedNum<8>> = fruit.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
 
-    for other in others{
-        //Find vector pointing from other to self
-        let other_physic_center: Vector2D<FixedNum<8>> = other.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
-        let difference_vector = this_physic_center - other_physic_center;
+    //Really bad algorithm: check all other fruits to see if they're in touching distance
+    let num_fruits = fruits.len();
+    for fruit_index in 0..num_fruits{
+        let fruit = fruits.get_mut(fruit_index).unwrap();
+        let fruit_phsyic_center: Vector2D<FixedNum<8>> = fruit.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
 
-        //Move apart if they're too close. They are touching when the magnitude <= sum of radii
-        let overlap = -(difference_vector.fast_magnitude() - fruit.size/2 - other.size/2);
-        if overlap > 0.into() {
-            //A collision has occurred
-            //The one with the lowest y pos needs to move away from other by the amount they are overlapping
-            let move_vector = difference_vector.fast_normalise() * overlap;
-            if fruit.pos.y < other.pos.y {
-                fruit.pos += move_vector;
-            }
-            else {
-                other.pos -= move_vector; //if the other one needs to move, it should be in the other direction
+        for other_index in 0..num_fruits{
+            //don't collide with self
+            if fruit_index == other_index{
+                continue;
             }
 
-            //Change velocity vector of both by the collision force
-            //for now just move in opposite directions with restitution, not accurate though
-            fruit.vel = difference_vector.fast_normalise() * fruit.vel.fast_magnitude() * num!(0.5);
-            other.vel = difference_vector.fast_normalise() * other.vel.fast_magnitude() * num!(0.5) * -1;
+            let other = fruits.get_mut(other_index).unwrap();
+            let other_physic_center: Vector2D<FixedNum<8>> = other.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
+
+            //Find vector pointing from other to fruit
+            let difference_vector = fruit_phsyic_center - other_physic_center;
+
+            //Move apart if they're too close (static collision). They are touching when the magnitude <= sum of radii
+            let overlap = -(difference_vector.fast_magnitude() - fruit.size/2 - other.size/2);
+            if overlap > 0.into() {
+                //A collision has occurred
+                //Add it to the collisions Vec for dynamic processing later
+                collisions.push((fruits.get_mut(fruit_index).unwrap(), fruits.get_mut(other_index).unwrap()));
+
+                //The one with the lowest y pos needs to move away from other by the amount they are overlapping (push higher one up)
+                let move_vector = difference_vector.fast_normalise() * overlap;
+                if fruit.pos.y < other.pos.y {
+                    fruit.pos += move_vector;
+                }
+                else {
+                    other.pos -= move_vector; //if the other one needs to move, it should be in the other direction
+                }
+
+                //Change velocity vector of both by the collision force
+                //for now just move in opposite directions with restitution, not accurate though
+                fruit.vel = difference_vector.fast_normalise() * fruit.vel.fast_magnitude() * num!(0.5);
+                other.vel = difference_vector.fast_normalise() * other.vel.fast_magnitude() * num!(0.5) * -1;
+            }   
         }
     }
+    return (fruits,collisions);
 }
 
-pub fn update_all_fruits(mut fruits: Vec<Fruit>) -> Vec<Fruit>{
+pub fn update_all_fruits(fruits: Vec<Fruit>) -> Vec<Fruit>{
+    let (mut fruits, collisions) = find_all_fruit_collisions(fruits);
+
     for _i in 0..fruits.len(){
         let mut fruit = fruits.remove(0);
         fruit.update(fruits.as_mut_slice());
