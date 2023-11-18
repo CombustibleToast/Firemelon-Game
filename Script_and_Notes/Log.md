@@ -107,3 +107,18 @@ Today I have once again put off an assignment after realizing a mistake that I m
 Also, I fixed fruit jittering on the bottom of the screen by making their y velocities 0 if they were close to 0
 
 ![](https://lh7-us.googleusercontent.com/1B259JkTLjyegBmJEZacvtJXgpQqbppb-HGXNmEw5BaVL-HknWznIxFPaQkmXHkiTudjFiXdrwI9cKUA3n7yfEJRRAoteG1VHAV_9B4V8gYrV6xPLNHGh8fSMqGebOeQgWjhDfVkd4RaDiq6-B8unZM)
+
+## 11
+11/17
+master 6f782dc - Attempting to compile a vec of collisions not working because borrow checker
+It's been like 3 weeks because I had so many assignments and projects due.
+I started to look into the dynamic physics of collisions today with the help of [this video](https://www.youtube.com/watch?v=LPzyNOHY3A4) which was super helpful. However, the borrow checker strikes again. 
+The big issue I was having today was compiling all collisions into a vector or any other data structure. My approach to this was creating a `Vec<(&Fruit, &Fruit)>` to hold pairs/tuples of fruit that experienced a collision that frame. The problem came from trying to take a reference from the Vec with all active fruits and placing them in the new Vec.
+Originally, I was passing in a mutable slice using `Vec.as_slice` into the method that finds all collisions. This worked for dealing with the static collisions only, but did not work when I also tried to push the two fruit into the collisions vector. The problem here, likely among other deeper problems, was lifetimes. The compiler kept telling me that the lifetime of the collisions vec needed to outlive some other lifetime and it all just confused me. I went to [the book](https://doc.rust-lang.org/rust-by-example/scope/lifetime.html) (this is not actually the book, i mistook it for the book) to get a baseline understanding of lifetimes which helped a little, but not enough to salvage this approach.
+There was also an issue with using `for fruit in fruits` and nest in `for other in fruits` loops as the `in` keyword makes the slice into an iterator, which mut borrows it, which disallows the other loop to use it as well. I got around this by just using indexes for the slice, i.e. `for fruit_index in 0..fruits_len` which is clunkier but works. 
+Back to the main issue, my second and current attempt uses what I now think is bad design and will probably be scrapping it. Instead of passing in the `fruits.as_slice`, I *move* in the whole vec and move it out on return. This is very clunky and highly unnecessary; the reason borrows exists is specifically to alleviate the need to move variables in and out of function calls. Anyways, this approach still doesn't work because doing `fruits.get_mut(index)` borrows fruits as mutable itself. This causes an issue when I try to get the other fruit within the nested loop, as we can only have one mutable borrow at a time. 
+This problem can probably be fixed in one of two ways:
+1. Split up the collision steps into compile collisions -> merge fruit (which i don't even have implemented right now) -> static collisions -> dynamic collisions
+	- This may still make the borrow checker unhappy during the compile collisions phase. I'd have to pass in an immutable borrow of the fruits vec, which may solve the issue but who knows.
+2. Do all steps in part 1 in a single function
+	- This would be horribly unreadable but may appease the borrow checker. I don't really want to live to appease the borrow checker, I would really rather learn how to use and harness it properly, which is part of the reason I'm doing this project in the first place. 
