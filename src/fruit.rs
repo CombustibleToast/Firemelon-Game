@@ -143,7 +143,7 @@ fn try_merge_fruits(fruit: &mut Fruit, other: &mut Fruit, all: &mut [Fruit]) -> 
     return true;
 }
 
-fn find_all_fruit_collisions(mut fruits: Vec<Fruit>) -> (Vec<Fruit>, Vec<(&Fruit,&Fruit)>){
+fn find_all_fruit_collisions<'a>(fruits: &'a Vec<Fruit>) -> Vec<(&'a Fruit<'a>, &'a Fruit<'a>)>{
     //Storage
     let mut collisions : Vec<(&Fruit,&Fruit)> = Vec::new();
     let unit_vector: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
@@ -151,7 +151,7 @@ fn find_all_fruit_collisions(mut fruits: Vec<Fruit>) -> (Vec<Fruit>, Vec<(&Fruit
     //Really bad algorithm: check all other fruits to see if they're in touching distance
     let num_fruits = fruits.len();
     for fruit_index in 0..num_fruits{
-        let fruit = fruits.get_mut(fruit_index).unwrap();
+        let fruit = fruits.get(fruit_index).unwrap();
         let fruit_phsyic_center: Vector2D<FixedNum<8>> = fruit.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
 
         for other_index in 0..num_fruits{
@@ -160,15 +160,41 @@ fn find_all_fruit_collisions(mut fruits: Vec<Fruit>) -> (Vec<Fruit>, Vec<(&Fruit
                 continue;
             }
 
-            let other = fruits.get_mut(other_index).unwrap();
+            let other = fruits.get(other_index).unwrap();
             let other_physic_center: Vector2D<FixedNum<8>> = other.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
 
             //Find vector pointing from other to fruit
             let difference_vector = fruit_phsyic_center - other_physic_center;
 
-            //Move apart if they're too close (static collision). They are touching when the magnitude <= sum of radii
+            //They are touching when the magnitude <= sum of radii
             let overlap = -(difference_vector.fast_magnitude() - fruit.size/2 - other.size/2);
-            if overlap > 0.into() {
+            if overlap > 0.into(){
+                collisions.push((fruit,other));
+            }
+        }
+    }
+    return collisions;
+}
+
+pub fn update_all_fruits(mut fruits: Vec<Fruit>) -> Vec<Fruit>{
+    let mut collisions = find_all_fruit_collisions(&fruits);
+    //merge_all_collisions(collisions, fruits);
+
+    for _i in 0..fruits.len(){
+        let mut fruit = fruits.remove(0);
+        fruit.update(fruits.as_mut_slice());
+        fruits.push(fruit);
+    }
+
+    return fruits;
+}
+
+/* Static collision alg
+        let fruit_phsyic_center: Vector2D<FixedNum<8>> = fruit.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
+            let other_physic_center: Vector2D<FixedNum<8>> = other.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
+            let difference_vector = fruit_phsyic_center - other_physic_center;
+            let overlap = -(difference_vector.fast_magnitude() - fruit.size/2 - other.size/2);
+if overlap > 0.into() {
                 //A collision has occurred
                 //Add it to the collisions Vec for dynamic processing later
                 collisions.push((fruits.get_mut(fruit_index).unwrap(), fruits.get_mut(other_index).unwrap()));
@@ -187,19 +213,4 @@ fn find_all_fruit_collisions(mut fruits: Vec<Fruit>) -> (Vec<Fruit>, Vec<(&Fruit
                 fruit.vel = difference_vector.fast_normalise() * fruit.vel.fast_magnitude() * num!(0.5);
                 other.vel = difference_vector.fast_normalise() * other.vel.fast_magnitude() * num!(0.5) * -1;
             }   
-        }
-    }
-    return (fruits,collisions);
-}
-
-pub fn update_all_fruits(fruits: Vec<Fruit>) -> Vec<Fruit>{
-    let (mut fruits, collisions) = find_all_fruit_collisions(fruits);
-
-    for _i in 0..fruits.len(){
-        let mut fruit = fruits.remove(0);
-        fruit.update(fruits.as_mut_slice());
-        fruits.push(fruit);
-    }
-
-    return fruits;
-}
+*/
