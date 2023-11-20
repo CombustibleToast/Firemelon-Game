@@ -143,9 +143,9 @@ fn try_merge_fruits(fruit: &mut Fruit, other: &mut Fruit, all: &mut [Fruit]) -> 
     return true;
 }
 
-fn find_all_fruit_collisions<'a>(fruits: &'a Vec<Fruit>) -> Vec<(&'a Fruit<'a>, &'a Fruit<'a>)>{
+fn find_all_fruit_collisions(fruits: &Vec<Fruit>) -> Vec<(usize, usize)>{
     //Storage
-    let mut collisions : Vec<(&Fruit,&Fruit)> = Vec::new();
+    let mut collisions : Vec<(usize,usize)> = Vec::new();
     let unit_vector: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
 
     //Really bad algorithm: check all other fruits to see if they're in touching distance
@@ -169,16 +169,43 @@ fn find_all_fruit_collisions<'a>(fruits: &'a Vec<Fruit>) -> Vec<(&'a Fruit<'a>, 
             //They are touching when the magnitude <= sum of radii
             let overlap = -(difference_vector.fast_magnitude() - fruit.size/2 - other.size/2);
             if overlap > 0.into(){
-                collisions.push((fruit,other));
+                collisions.push((fruit_index,other_index));
             }
         }
     }
     return collisions;
 }
 
+fn try_merge_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut Vec<Fruit>){
+    //Each tuple in collisions is (fruit1_index, fruit2_index) experiencing a collision
+    for (fruit1_index, fruit2_index) in collisions{
+        let fruit1 = fruits.get(*fruit1_index).unwrap();
+        let fruit2 = fruits.get(*fruit2_index).unwrap();
+
+        //Skip if the two fruits are not the same stage
+        if fruit1.stage != fruit2.stage {
+            continue;
+        }
+
+        //The two fruits are the same stage, merge them.
+        //Create new fruit inbetween the two
+        let new_fruit_pos = (fruit1.pos - fruit1.pos)/2 + fruit1.pos; // this probably isn't right, might need to get physic center and convert back
+        let oam = gba.display.object.get_managed();
+        
+        // create_fruit(pos, oam, sprites, stage, id);
+
+        //Mark the two fruits as deleted and play its disappearing animation
+        // pop_fruit(fruit1_index, fruits);
+        // pop_fruit(fruit2_index, fruits);
+
+        //Remove the collision from the collisions list and the fruits from the fruits list
+
+    }
+}
+
 pub fn update_all_fruits(mut fruits: Vec<Fruit>) -> Vec<Fruit>{
     let mut collisions = find_all_fruit_collisions(&fruits);
-    //merge_all_collisions(collisions, fruits);
+    try_merge_collisions(&mut collisions, &mut fruits);
 
     for _i in 0..fruits.len(){
         let mut fruit = fruits.remove(0);
