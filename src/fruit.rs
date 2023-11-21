@@ -25,21 +25,19 @@ pub struct Fruit<'a>{
 }
 
 pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites: &'a [SpriteVram], stage: i32) -> Fruit<'a>{
-    println!("Creating fruit!!");
     //Create oam object
     let object = oam.object(sprites[stage as usize].clone());
 
     //for testing, create a random velocity
-    let randvel: Vector2D<FixedNum<8>> = Vector2D { x: (rng::gen()%6 - 3).into(), y: (rng::gen()%6 - 3).into() };
-    println!("generated a random vel {}, {}", randvel.x, randvel.y);
+    //let randvel: Vector2D<FixedNum<8>> = Vector2D { x: (rng::gen()%6 - 3).into(), y: (rng::gen()%6 - 3).into() };
 
     let mut fruit: Fruit;
     unsafe { //unfortunately necessary for using mutable static NEXT_FRUIT_ID. Would be good to change in the future
         fruit = Fruit{
             id: NEXT_FRUIT_ID.clone(),
             pos: pos.clone(),
-            //vel: Vector2D::<FixedNum<8>> {x: num!(0.0), y: num!(0.0)},
-            vel: randvel,
+            vel: Vector2D::<FixedNum<8>> {x: num!(0.0), y: num!(0.0)},
+            //vel: randvel,
             stage: stage,
             size: stage + 3,
             is_freefall: false,
@@ -54,7 +52,6 @@ pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites
     fruit.object.set_position(fruit.pos.trunc());
     fruit.object.show();
 
-    println!("Initial pos: {}, {}", fruit.pos.x, fruit.pos.y);
     return fruit;
 }
 
@@ -64,11 +61,6 @@ impl Fruit<'_>{
     }
 
     pub fn update(&mut self, others: &mut [Fruit]){
-        // if self.id == 1 {
-        //     println!("Updating fruit");
-        //     println!("Pos: {}, {}", self.pos.x, self.pos.y);
-        //     println!("Vel: {}, {}", self.vel.x, self.vel.y);
-        // }
         //Update velocity
         update_velocity(self);
 
@@ -179,15 +171,17 @@ fn find_all_fruit_collisions(fruits: &[Fruit]) -> Vec<(usize, usize)>{
     return collisions;
 }
 
-fn try_merge_collisions<'a,'b>(collisions: &mut Vec<(usize, usize)>, fruits: &'b mut Vec<Fruit<'a>>, oam: &'a OamManaged, sprites: &'a [SpriteVram]){
+fn try_merge_collisions<'a>(collisions: &mut Vec<(usize, usize)>, fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, sprites: &'a [SpriteVram]){
     //Each tuple in collisions is (fruit1_index, fruit2_index) experiencing a collision
     for collision_index in 0..collisions.len(){
-        let (fruit1_index, fruit2_index) = collisions.get(collision_index).unwrap();
-        let fruit1 = fruits.get(*fruit1_index).unwrap();
-        let fruit2 = fruits.get(*fruit2_index).unwrap();
+        println!("Getting collision {} when it has len {}", collision_index, collisions.len());
+        let (fruit1_index, fruit2_index) = collisions.remove(0);
+        let fruit1 = fruits.get(fruit1_index).unwrap();
+        let fruit2 = fruits.get(fruit2_index).unwrap();
 
-        //Skip if the two fruits are not the same stage
+        //Skip if the two fruits are not the same stage and add back the collision
         if fruit1.stage != fruit2.stage {
+            collisions.push((fruit1_index, fruit2_index));
             continue;
         }
 
@@ -198,11 +192,10 @@ fn try_merge_collisions<'a,'b>(collisions: &mut Vec<(usize, usize)>, fruits: &'b
         fruits.push(create_fruit(new_fruit_pos, oam, sprites, fruit1.stage + 1));
 
         //Mark the two fruits as deleted and play its disappearing animation
-        pop_fruit(fruit1_index, fruits); //TODO: these can be done with less borrow jank
-        pop_fruit(fruit2_index, fruits);
+        pop_fruit(&fruit1_index, fruits); //TODO: these can be done with less borrow jank
+        pop_fruit(&fruit2_index, fruits);
         
-        //Remove the collision from the collisions list
-        collisions.remove(collision_index);
+        //Do not add back the collision
     }
 }
 
@@ -270,7 +263,7 @@ fn resolve_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut [Fruit]
 }
 
 
-pub fn update_all_fruits<'a>(fruits: &'a mut Vec<Fruit>, oam: &'a OamManaged, sprites: &'a [SpriteVram]){
+pub fn update_all_fruits<'a>(fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, sprites: &'a [SpriteVram]){
     let mut collisions = find_all_fruit_collisions(fruits.as_slice());
     try_merge_collisions(&mut collisions, fruits, oam, sprites);
     resolve_collisions(&mut collisions, fruits);
