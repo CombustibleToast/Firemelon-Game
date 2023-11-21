@@ -1,16 +1,16 @@
-use core::borrow::BorrowMut;
-
 use agb::{
     display::object::{Object, SpriteVram, Graphics, include_aseprite, Sprite, OamManaged},
     display::{HEIGHT, WIDTH},
     fixnum::{FixedNum, Vector2D, num, Num}, println,
-    rng,
+    rng, syscall::sqrt,
 };
 use alloc::{vec::Vec, slice};
 
 // const GRAVITY: FixedNum<8> = num!(0.5);
-// const UNIT_VECTOR: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
+// const UNIT_VECTOR: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)}; // this is NOT the unit vector lmao
 const SPRITE_SIZE: i32 = 8;
+
+static mut NEXT_FRUIT_ID: i32 = 0;
 
 pub struct Fruit<'a>{
     id: i32,
@@ -21,9 +21,10 @@ pub struct Fruit<'a>{
     is_freefall: bool,
     sprites: &'a [SpriteVram],
     pub object: Object<'a>,
+    popping: bool
 }
 
-pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites: &'a [SpriteVram], stage: i32, id: i32) -> Fruit<'a>{
+pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites: &'a [SpriteVram], stage: i32) -> Fruit<'a>{
     println!("Creating fruit!!");
     //Create oam object
     let object = oam.object(sprites[stage as usize].clone());
@@ -32,17 +33,22 @@ pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites
     let randvel: Vector2D<FixedNum<8>> = Vector2D { x: (rng::gen()%6 - 3).into(), y: (rng::gen()%6 - 3).into() };
     println!("generated a random vel {}, {}", randvel.x, randvel.y);
 
-    let mut fruit = Fruit{
-        id: id,
-        pos: pos.clone(),
-        //vel: Vector2D::<FixedNum<8>> {x: num!(0.0), y: num!(0.0)},
-        vel: randvel,
-        stage: stage,
-        size: stage + 3,
-        is_freefall: false,
-        sprites: sprites,
-        object: object
-    };
+    let mut fruit: Fruit;
+    unsafe { //unfortunately necessary for using mutable static NEXT_FRUIT_ID. Would be good to change in the future
+        fruit = Fruit{
+            id: NEXT_FRUIT_ID.clone(),
+            pos: pos.clone(),
+            //vel: Vector2D::<FixedNum<8>> {x: num!(0.0), y: num!(0.0)},
+            vel: randvel,
+            stage: stage,
+            size: stage + 3,
+            is_freefall: false,
+            sprites: sprites,
+            object: object,
+            popping: false
+        };
+        NEXT_FRUIT_ID += 1;
+    }
 
     //Apply initial conditions
     fruit.object.set_position(fruit.pos.trunc());
@@ -135,14 +141,6 @@ fn check_wall_collisions(fruit: &mut Fruit){
     //No need to check the top of the screen yet, that's the loss condition.    
 }
 
-fn try_merge_fruits(fruit: &mut Fruit, other: &mut Fruit, all: &mut [Fruit]) -> bool{
-    if fruit.stage != other.stage {
-        return false;
-    }
-
-    return true;
-}
-
 fn find_all_fruit_collisions(fruits: &Vec<Fruit>) -> Vec<(usize, usize)>{
     //Storage
     let mut collisions : Vec<(usize,usize)> = Vec::new();
@@ -176,9 +174,10 @@ fn find_all_fruit_collisions(fruits: &Vec<Fruit>) -> Vec<(usize, usize)>{
     return collisions;
 }
 
-fn try_merge_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut Vec<Fruit>){
+fn try_merge_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut Vec<Fruit>, oam: &OamManaged, sprites: &[SpriteVram]){
     //Each tuple in collisions is (fruit1_index, fruit2_index) experiencing a collision
-    for (fruit1_index, fruit2_index) in collisions{
+    for collision_index in 0..collisions.len(){
+        let (fruit1_index, fruit2_index) = collisions.get(collision_index).unwrap();
         let fruit1 = fruits.get(*fruit1_index).unwrap();
         let fruit2 = fruits.get(*fruit2_index).unwrap();
 
@@ -190,30 +189,69 @@ fn try_merge_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut Vec<F
         //The two fruits are the same stage, merge them.
         //Create new fruit inbetween the two
         let new_fruit_pos = (fruit1.pos - fruit1.pos)/2 + fruit1.pos; // this probably isn't right, might need to get physic center and convert back
-        let oam = gba.display.object.get_managed();
-        
-        // create_fruit(pos, oam, sprites, stage, id);
+        create_fruit(new_fruit_pos, oam, sprites, fruit1.stage + 1);
 
         //Mark the two fruits as deleted and play its disappearing animation
-        // pop_fruit(fruit1_index, fruits);
-        // pop_fruit(fruit2_index, fruits);
-
-        //Remove the collision from the collisions list and the fruits from the fruits list
-
+        pop_fruit(fruit1_index, fruits);
+        pop_fruit(fruit2_index, fruits);
+        
+        //Remove the collision from the collisions list
+        collisions.remove(collision_index);
     }
 }
 
-pub fn update_all_fruits(mut fruits: Vec<Fruit>) -> Vec<Fruit>{
+fn pop_fruit(index: &usize, fruits: &mut Vec<Fruit>){
+    let fruit = fruits.get_mut(*index).unwrap();
+    //Mark fruit for deletion (disables collision)
+    fruit.popping = true;
+
+    //disable phsyics
+    fruit.is_freefall = false;
+
+    //start animation
+    //TODO: implement animation
+    //For now, just hide the fruit
+    fruit.object.hide();
+}
+
+fn resolve_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut [Fruit]){
+    let unit_vector: Vector2D<FixedNum<8>> = Vector2D::new(sqrt(1).into(), sqrt(1).into());
+    for (fruit1_index, fruit2_index) in collisions{
+        //Resolve static collision
+        let fruit1 = &mut fruits[*fruit1_index];
+        let fruit2 = &mut fruits[*fruit2_index];
+        let fruit_phsyic_center: Vector2D<FixedNum<8>> = fruit1.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
+        let other_physic_center: Vector2D<FixedNum<8>> = fruit2.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
+        let difference_vector = fruit_phsyic_center - other_physic_center;
+        let overlap = -(difference_vector.fast_magnitude() - fruit1.size/2 - fruit2.size/2);
+
+        //The one with the lowest y pos needs to move away from other by the amount they are overlapping (push higher one up)
+        let move_vector = difference_vector.fast_normalise() * overlap;
+        if fruit1.pos.y < fruit2.pos.y {
+            fruit1.pos += move_vector;
+        }
+        else {
+            fruit2.pos -= move_vector; //if the other one needs to move, it should be in the other direction
+        }
+
+        //Resolve dynamic collision
+        //for now just move in opposite directions with restitution, not accurate though
+        fruit1.vel = difference_vector.fast_normalise() * fruit1.vel.fast_magnitude() * num!(0.5);
+        fruit2.vel = difference_vector.fast_normalise() * fruit2.vel.fast_magnitude() * num!(0.5) * -1;
+        
+    }
+}
+
+pub fn update_all_fruits(fruits: &mut Vec<Fruit>, oam: &OamManaged, sprites: &[SpriteVram]){
     let mut collisions = find_all_fruit_collisions(&fruits);
-    try_merge_collisions(&mut collisions, &mut fruits);
+    try_merge_collisions(&mut collisions, fruits, oam, sprites);
+    resolve_collisions(&mut collisions, fruits);
 
     for _i in 0..fruits.len(){
         let mut fruit = fruits.remove(0);
         fruit.update(fruits.as_mut_slice());
         fruits.push(fruit);
     }
-
-    return fruits;
 }
 
 /* Static collision alg
