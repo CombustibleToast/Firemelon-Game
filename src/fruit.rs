@@ -64,11 +64,11 @@ impl Fruit<'_>{
     }
 
     pub fn update(&mut self, others: &mut [Fruit]){
-        if self.id == 1 {
-            println!("Updating fruit");
-            println!("Pos: {}, {}", self.pos.x, self.pos.y);
-            println!("Vel: {}, {}", self.vel.x, self.vel.y);
-        }
+        // if self.id == 1 {
+        //     println!("Updating fruit");
+        //     println!("Pos: {}, {}", self.pos.x, self.pos.y);
+        //     println!("Vel: {}, {}", self.vel.x, self.vel.y);
+        // }
         //Update velocity
         update_velocity(self);
 
@@ -141,7 +141,7 @@ fn check_wall_collisions(fruit: &mut Fruit){
     //No need to check the top of the screen yet, that's the loss condition.    
 }
 
-fn find_all_fruit_collisions(fruits: &Vec<Fruit>) -> Vec<(usize, usize)>{
+fn find_all_fruit_collisions(fruits: &mut Vec<Fruit>) -> Vec<(usize, usize)>{
     //Storage
     let mut collisions : Vec<(usize,usize)> = Vec::new();
     let unit_vector: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
@@ -168,10 +168,14 @@ fn find_all_fruit_collisions(fruits: &Vec<Fruit>) -> Vec<(usize, usize)>{
             let overlap = -(difference_vector.fast_magnitude() - fruit.size/2 - other.size/2);
             if overlap > 0.into(){
                 collisions.push((fruit_index,other_index));
+                println!("Collision between {}, {}", fruit_index, other_index);
             }
         }
     }
     return collisions;
+}
+
+fn resolve_static_collision(fruit1_index: usize, fruit2_index: usize, fruits: &mut [Fruit]){
 }
 
 fn try_merge_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut Vec<Fruit>, oam: &OamManaged, sprites: &[SpriteVram]){
@@ -215,35 +219,65 @@ fn pop_fruit(index: &usize, fruits: &mut Vec<Fruit>){
 }
 
 fn resolve_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut [Fruit]){
-    let unit_vector: Vector2D<FixedNum<8>> = Vector2D::new(sqrt(1).into(), sqrt(1).into());
-    for (fruit1_index, fruit2_index) in collisions{
-        //Resolve static collision
-        let fruit1 = &mut fruits[*fruit1_index];
-        let fruit2 = &mut fruits[*fruit2_index];
-        let fruit_phsyic_center: Vector2D<FixedNum<8>> = fruit1.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
-        let other_physic_center: Vector2D<FixedNum<8>> = fruit2.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
-        let difference_vector = fruit_phsyic_center - other_physic_center;
-        let overlap = -(difference_vector.fast_magnitude() - fruit1.size/2 - fruit2.size/2);
-
-        //The one with the lowest y pos needs to move away from other by the amount they are overlapping (push higher one up)
-        let move_vector = difference_vector.fast_normalise() * overlap;
-        if fruit1.pos.y < fruit2.pos.y {
-            fruit1.pos += move_vector;
-        }
-        else {
-            fruit2.pos -= move_vector; //if the other one needs to move, it should be in the other direction
-        }
-
-        //Resolve dynamic collision
-        //for now just move in opposite directions with restitution, not accurate though
-        fruit1.vel = difference_vector.fast_normalise() * fruit1.vel.fast_magnitude() * num!(0.5);
-        fruit2.vel = difference_vector.fast_normalise() * fruit2.vel.fast_magnitude() * num!(0.5) * -1;
+        let unit_vector: Vector2D<FixedNum<8>> = Vector2D::new(sqrt(1).into(), sqrt(1).into());
+        for (fruit1_index, fruit2_index) in collisions{
+            //Resolve static collision
+            let move_vector: Vector2D<Num<i32, 8>>;
+            { //This scope is necessary to isolate the immutable fruit borrows to get mutable borrows later.
+                let fruit1 = &fruits[*fruit1_index]; 
+                let fruit2 = &fruits[*fruit2_index]; //Regular borrows to do calculations. Mutable borrows happen when mutation happens
+                let fruit_phsyic_center: Vector2D<FixedNum<8>> = fruit1.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
+                let other_physic_center: Vector2D<FixedNum<8>> = fruit2.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
+                let difference_vector = fruit_phsyic_center - other_physic_center;
+                let overlap = -(difference_vector.fast_magnitude() - fruit1.size/2 - fruit2.size/2);
+                move_vector = difference_vector.fast_normalise() * overlap;
+            }
         
+            //The one with the lowest y pos needs to move away from other by the amount they are overlapping (push higher one up)
+            if fruits[*fruit1_index].pos.y < fruits[*fruit2_index].pos.y {
+                fruits[*fruit1_index].pos += move_vector;
+            }
+            else {
+                fruits[*fruit2_index].pos -= move_vector; //if the other one needs to move, it should be in the other direction
+            }
+
+            //Resolve dynamic collision
+            let new_v1: Vector2D<FixedNum<8>>;
+            let new_v2: Vector2D<FixedNum<8>>;
+            {
+                let fruit1 = &fruits[*fruit1_index]; 
+                let fruit2 = &fruits[*fruit2_index];
+                let normal_vector = (fruit2.pos - fruit1.pos).normalise();
+                let tangent_vector = Vector2D::new(-normal_vector.y, normal_vector.x);
+                let dot_tan1 = dot_product(&fruit1.vel, &tangent_vector);
+                let dot_tan2 = dot_product(&fruit2.vel, &tangent_vector);
+                let dot_norm1 = dot_product(&fruit1.vel, &normal_vector);
+                let dot_norm2 = dot_product(&fruit2.vel, &normal_vector);
+                let mass1: Num<i32, 8> = num!(1.333333333) * num!(3.14159265359) * fruit1.size * fruit1.size * fruit1.size;
+                let mass2: Num<i32, 8> = num!(1.333333333) * num!(3.14159265359) * fruit2.size * fruit2.size * fruit2.size;
+                let momentum1 = (dot_norm1 * (mass1 - mass2) + num!(2.0) * mass2 * dot_norm2) / (mass1 + mass2);
+                let momentum2 = (dot_norm2 * (mass2 - mass1) + num!(2.0) * mass1 * dot_norm1) / (mass1 + mass2);
+
+                new_v1 = Vector2D::new(
+                    tangent_vector.x * dot_tan1 + normal_vector.x * mass1, 
+                    tangent_vector.y * dot_tan1 + normal_vector.y * mass1);
+                new_v2 = Vector2D::new(
+                    tangent_vector.x * dot_tan2 + normal_vector.x * mass2, 
+                    tangent_vector.y * dot_tan2 + normal_vector.y * mass2);
+            }
+
+            fruits[*fruit1_index].vel = new_v1;
+            fruits[*fruit2_index].vel = new_v2;
+
+            // //for now just move in opposite directions with restitution, not accurate though
+            // fruit1.vel = difference_vector.fast_normalise() * fruit1.vel.fast_magnitude() * num!(0.5);
+            // fruit2.vel = difference_vector.fast_normalise() * fruit2.vel.fast_magnitude() * num!(0.5) * -1;
     }
 }
 
+
 pub fn update_all_fruits(fruits: &mut Vec<Fruit>, oam: &OamManaged, sprites: &[SpriteVram]){
-    let mut collisions = find_all_fruit_collisions(&fruits);
+    let mut collisions = find_all_fruit_collisions(fruits);
     try_merge_collisions(&mut collisions, fruits, oam, sprites);
     resolve_collisions(&mut collisions, fruits);
 
@@ -279,3 +313,8 @@ if overlap > 0.into() {
                 other.vel = difference_vector.fast_normalise() * other.vel.fast_magnitude() * num!(0.5) * -1;
             }   
 */
+
+//This could very easily be a macro, I just don't want to learn macros right now
+pub fn dot_product(v1: &Vector2D<FixedNum<8>>, v2: &Vector2D<FixedNum<8>>) -> FixedNum<8> {
+    return v1.x * v2.x + v1.y * v2.y;
+}
