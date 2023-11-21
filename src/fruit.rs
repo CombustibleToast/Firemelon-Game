@@ -141,7 +141,7 @@ fn check_wall_collisions(fruit: &mut Fruit){
     //No need to check the top of the screen yet, that's the loss condition.    
 }
 
-fn find_all_fruit_collisions(fruits: &mut Vec<Fruit>) -> Vec<(usize, usize)>{
+fn find_all_fruit_collisions(fruits: &[Fruit]) -> Vec<(usize, usize)>{
     //Storage
     let mut collisions : Vec<(usize,usize)> = Vec::new();
     let unit_vector: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
@@ -149,12 +149,16 @@ fn find_all_fruit_collisions(fruits: &mut Vec<Fruit>) -> Vec<(usize, usize)>{
     //Really bad algorithm: check all other fruits to see if they're in touching distance
     let num_fruits = fruits.len();
     for fruit_index in 0..num_fruits{
+        //don't process if this is a popped fruit
+        if fruits[fruit_index].popping {
+            continue;
+        }
         let fruit = fruits.get(fruit_index).unwrap();
         let fruit_phsyic_center: Vector2D<FixedNum<8>> = fruit.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
 
         for other_index in 0..num_fruits{
-            //don't collide with self
-            if fruit_index == other_index{
+            //don't collide with self or popped fruits
+            if fruit_index == other_index || fruits[other_index].popping{
                 continue;
             }
 
@@ -166,7 +170,7 @@ fn find_all_fruit_collisions(fruits: &mut Vec<Fruit>) -> Vec<(usize, usize)>{
 
             //They are touching when the magnitude <= sum of radii
             let overlap = -(difference_vector.fast_magnitude() - fruit.size/2 - other.size/2);
-            if overlap > 0.into(){
+            if overlap > 0.into() && !collisions.contains(&(other_index, fruit_index)){
                 collisions.push((fruit_index,other_index));
                 println!("Collision between {}, {}", fruit_index, other_index);
             }
@@ -175,10 +179,7 @@ fn find_all_fruit_collisions(fruits: &mut Vec<Fruit>) -> Vec<(usize, usize)>{
     return collisions;
 }
 
-fn resolve_static_collision(fruit1_index: usize, fruit2_index: usize, fruits: &mut [Fruit]){
-}
-
-fn try_merge_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut Vec<Fruit>, oam: &OamManaged, sprites: &[SpriteVram]){
+fn try_merge_collisions<'a,'b>(collisions: &mut Vec<(usize, usize)>, fruits: &'b mut Vec<Fruit<'a>>, oam: &'a OamManaged, sprites: &'a [SpriteVram]){
     //Each tuple in collisions is (fruit1_index, fruit2_index) experiencing a collision
     for collision_index in 0..collisions.len(){
         let (fruit1_index, fruit2_index) = collisions.get(collision_index).unwrap();
@@ -193,10 +194,11 @@ fn try_merge_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut Vec<F
         //The two fruits are the same stage, merge them.
         //Create new fruit inbetween the two
         let new_fruit_pos = (fruit1.pos - fruit1.pos)/2 + fruit1.pos; // this probably isn't right, might need to get physic center and convert back
-        create_fruit(new_fruit_pos, oam, sprites, fruit1.stage + 1);
+        //new_fruits.push(create_fruit(new_fruit_pos, oam, sprites, fruit1.stage + 1));
+        fruits.push(create_fruit(new_fruit_pos, oam, sprites, fruit1.stage + 1));
 
         //Mark the two fruits as deleted and play its disappearing animation
-        pop_fruit(fruit1_index, fruits);
+        pop_fruit(fruit1_index, fruits); //TODO: these can be done with less borrow jank
         pop_fruit(fruit2_index, fruits);
         
         //Remove the collision from the collisions list
@@ -234,12 +236,8 @@ fn resolve_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut [Fruit]
             }
         
             //The one with the lowest y pos needs to move away from other by the amount they are overlapping (push higher one up)
-            if fruits[*fruit1_index].pos.y < fruits[*fruit2_index].pos.y {
-                fruits[*fruit1_index].pos += move_vector;
-            }
-            else {
-                fruits[*fruit2_index].pos -= move_vector; //if the other one needs to move, it should be in the other direction
-            }
+            fruits[*fruit1_index].pos += move_vector/2;
+            fruits[*fruit2_index].pos -= move_vector/2; //if the other one needs to move, it should be in the other direction
 
             //Resolve dynamic collision
             let new_v1: Vector2D<FixedNum<8>>;
@@ -259,25 +257,21 @@ fn resolve_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut [Fruit]
                 let momentum2 = (dot_norm2 * (mass2 - mass1) + num!(2.0) * mass1 * dot_norm1) / (mass1 + mass2);
 
                 new_v1 = Vector2D::new(
-                    tangent_vector.x * dot_tan1 + normal_vector.x * mass1, 
-                    tangent_vector.y * dot_tan1 + normal_vector.y * mass1);
+                    tangent_vector.x * dot_tan1 + normal_vector.x * momentum1, 
+                    tangent_vector.y * dot_tan1 + normal_vector.y * momentum1);
                 new_v2 = Vector2D::new(
-                    tangent_vector.x * dot_tan2 + normal_vector.x * mass2, 
-                    tangent_vector.y * dot_tan2 + normal_vector.y * mass2);
+                    tangent_vector.x * dot_tan2 + normal_vector.x * momentum2, 
+                    tangent_vector.y * dot_tan2 + normal_vector.y * momentum2);
             }
 
             fruits[*fruit1_index].vel = new_v1;
             fruits[*fruit2_index].vel = new_v2;
-
-            // //for now just move in opposite directions with restitution, not accurate though
-            // fruit1.vel = difference_vector.fast_normalise() * fruit1.vel.fast_magnitude() * num!(0.5);
-            // fruit2.vel = difference_vector.fast_normalise() * fruit2.vel.fast_magnitude() * num!(0.5) * -1;
     }
 }
 
 
-pub fn update_all_fruits(fruits: &mut Vec<Fruit>, oam: &OamManaged, sprites: &[SpriteVram]){
-    let mut collisions = find_all_fruit_collisions(fruits);
+pub fn update_all_fruits<'a>(fruits: &'a mut Vec<Fruit>, oam: &'a OamManaged, sprites: &'a [SpriteVram]){
+    let mut collisions = find_all_fruit_collisions(fruits.as_slice());
     try_merge_collisions(&mut collisions, fruits, oam, sprites);
     resolve_collisions(&mut collisions, fruits);
 
@@ -287,32 +281,6 @@ pub fn update_all_fruits(fruits: &mut Vec<Fruit>, oam: &OamManaged, sprites: &[S
         fruits.push(fruit);
     }
 }
-
-/* Static collision alg
-        let fruit_phsyic_center: Vector2D<FixedNum<8>> = fruit.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
-            let other_physic_center: Vector2D<FixedNum<8>> = other.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
-            let difference_vector = fruit_phsyic_center - other_physic_center;
-            let overlap = -(difference_vector.fast_magnitude() - fruit.size/2 - other.size/2);
-if overlap > 0.into() {
-                //A collision has occurred
-                //Add it to the collisions Vec for dynamic processing later
-                collisions.push((fruits.get_mut(fruit_index).unwrap(), fruits.get_mut(other_index).unwrap()));
-
-                //The one with the lowest y pos needs to move away from other by the amount they are overlapping (push higher one up)
-                let move_vector = difference_vector.fast_normalise() * overlap;
-                if fruit.pos.y < other.pos.y {
-                    fruit.pos += move_vector;
-                }
-                else {
-                    other.pos -= move_vector; //if the other one needs to move, it should be in the other direction
-                }
-
-                //Change velocity vector of both by the collision force
-                //for now just move in opposite directions with restitution, not accurate though
-                fruit.vel = difference_vector.fast_normalise() * fruit.vel.fast_magnitude() * num!(0.5);
-                other.vel = difference_vector.fast_normalise() * other.vel.fast_magnitude() * num!(0.5) * -1;
-            }   
-*/
 
 //This could very easily be a macro, I just don't want to learn macros right now
 pub fn dot_product(v1: &Vector2D<FixedNum<8>>, v2: &Vector2D<FixedNum<8>>) -> FixedNum<8> {
