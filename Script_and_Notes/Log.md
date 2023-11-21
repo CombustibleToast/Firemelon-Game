@@ -122,3 +122,9 @@ This problem can probably be fixed in one of two ways:
 	- This may still make the borrow checker unhappy during the compile collisions phase. I'd have to pass in an immutable borrow of the fruits vec, which may solve the issue but who knows.
 2. Do all steps in part 1 in a single function
 	- This would be horribly unreadable but may appease the borrow checker. I don't really want to live to appease the borrow checker, I would really rather learn how to use and harness it properly, which is part of the reason I'm doing this project in the first place. 
+
+# 12
+11/20
+master 5a96f83 - Removed static collision logic from collision function and the borrow checker allows it now.
+master c536ed0 - Began implementing collision-merge, which requires GBA and graphics structs to work.
+master 89661d1 - Refactoring done but still need to figure out how to change the properties of both during collision.
