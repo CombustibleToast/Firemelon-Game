@@ -2,13 +2,19 @@ use agb::{
     display::object::{Object, SpriteVram, Graphics, include_aseprite, Sprite, OamManaged},
     display::{HEIGHT, WIDTH},
     fixnum::{FixedNum, Vector2D, num, Num}, println,
-    rng, syscall::sqrt,
+    syscall::sqrt,
+    rng,
 };
-use alloc::{vec::Vec, slice};
+use alloc::vec::Vec;
 
 // const GRAVITY: FixedNum<8> = num!(0.5);
 // const UNIT_VECTOR: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)}; // this is NOT the unit vector lmao
-const SPRITE_SIZE: i32 = 8;
+const SPRITE_SIZE: i32 = 64;
+const FRUIT_DIAMETERS: [i32; 11] = [9, 11, 15, 18, 22, 29, 32, 39, 42, 53, 64];
+const BOX_LEFT: i32 = 0;
+const BOX_RIGHT: i32 = WIDTH;
+const BOX_TOP: i32 = 0;
+const BOX_BOTTOM: i32 = HEIGHT;
 
 static mut NEXT_FRUIT_ID: i32 = 0;
 
@@ -19,7 +25,6 @@ pub struct Fruit<'a>{
     stage: i32,
     size: i32,
     is_freefall: bool,
-    sprites: &'a [SpriteVram],
     pub object: Object<'a>,
     popping: bool
 }
@@ -29,19 +34,18 @@ pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites
     let object = oam.object(sprites[stage as usize].clone());
 
     //for testing, create a random velocity
-    //let randvel: Vector2D<FixedNum<8>> = Vector2D { x: (rng::gen()%6 - 3).into(), y: (rng::gen()%6 - 3).into() };
+    let randvel: Vector2D<FixedNum<8>> = Vector2D { x: (rng::gen()%6 - 3).into(), y: (rng::gen()%6 - 3).into() };
 
     let mut fruit: Fruit;
     unsafe { //unfortunately necessary for using mutable static NEXT_FRUIT_ID. Would be good to change in the future
         fruit = Fruit{
             id: NEXT_FRUIT_ID.clone(),
             pos: pos.clone(),
-            vel: Vector2D::<FixedNum<8>> {x: num!(0.0), y: num!(0.0)},
-            //vel: randvel,
+            //vel: Vector2D::<FixedNum<8>> {x: num!(0.0), y: num!(0.0)},
+            vel: randvel,
             stage: stage,
-            size: stage + 3,
+            size: FRUIT_DIAMETERS[stage as usize],
             is_freefall: false,
-            sprites: sprites,
             object: object,
             popping: false
         };
@@ -60,83 +64,96 @@ impl Fruit<'_>{
         self.is_freefall = true;
     }
 
-    pub fn update(&mut self, others: &mut [Fruit]){
+    pub fn update(&mut self){
         //Update velocity
-        update_velocity(self);
+        self.update_velocity();
 
         //Detect Collisions
-        check_wall_collisions(self);
+        self.check_wall_collisions();
         //Collisions with other fruit handled in updateallfruit
         //let mut fruitCollisions : Vec<(&Fruit,&Fruit)> = check_other_fruit_collisions(self, others, &mut fruitCollisions); 
         
         //Apply velocity
-        polish_velocity(self);
-        apply_velocity(self);
+        self.apply_velocity();
 
         //Try to merge with other fruit
 
         //Set oam object new position
         self.object.set_position(self.pos.trunc());
     }
+
+    fn update_velocity(&mut self){
+        let maxvel: FixedNum<8> = num!(5.0);
+        //Apply gravity
+        self.vel.y += num!(0.1); //gravity because I cant do const = num!(0.5) for some reason
+        //Clamp crashes so we do it manually
+        if self.vel.y > maxvel {
+            println!("Fruit {} exceeded max velocity!", self.id);
+            self.vel.y = maxvel;
+        }
+
+        //Apply drag
+        let drag_vector = num!(0.99);
+        self.vel *= drag_vector;
+    }
+
+    fn check_wall_collisions(&mut self){
+        let physic_center = self.get_phsyic_center();
+        //Calculate max x and max y values of the sprite location
+        let x_min = self.size/2 - SPRITE_SIZE/2; //negative number
+        let x_max = WIDTH + SPRITE_SIZE/2 - self.size/2;
+        let y_min = self.size/2 - SPRITE_SIZE/2;
+        let y_max = HEIGHT - SPRITE_SIZE/2 - self.size/2;
+        let restitution = num!(0.1);
+
+        if self.pos.x <= x_min.into(){
+            self.vel.x = -self.vel.x * restitution;
+            self.pos.x = x_min.into();
+        }
+        if self.pos.x >= x_max.into(){
+            self.vel.x = -self.vel.x * restitution;
+            self.pos.x = x_max.into();
+        }
+        if self.pos.y <= y_min.into(){
+            self.vel.y = -self.vel.y * restitution;
+            self.pos.y = y_min.into();
+        }
+        //Remember that max height is the bottom of the screen
+        if self.pos.y >= y_max.into(){
+            self.vel.y = -self.vel.y * restitution;
+            self.pos.y = y_max.into();
+        }
+        //No need to check the top of the screen yet, that's the loss condition.    
+    }
+
+    fn polish_velocity(&mut self){
+        if self.vel.y.abs() < num!(0.09) {
+            self.vel.y = num!(0.0);
+        }
+    }
+
+    fn apply_velocity(&mut self){
+        self.pos += self.vel;
+    }
+
+    fn get_phsyic_center(&self) -> Vector2D<FixedNum<8>>{
+        let unit_vector: Vector2D<FixedNum<8>> = Vector2D::new(sqrt(1).into(), sqrt(1).into());
+        return self.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
+    }
 }
 
-fn update_velocity(fruit: &mut Fruit){
-    let maxvel: FixedNum<8> = num!(5.0);
-    //Apply gravity
-    fruit.vel.y += num!(0.1); //gravity because I cant do const = num!(0.5) for some reason
-    //Clamp crashes so we do it manually
-    if fruit.vel.y > maxvel {
-        println!("Fruit {} exceeded max velocity!", fruit.id);
-        fruit.vel.y = maxvel;
+fn remove_all_popped_fruits(fruits: &mut Vec<Fruit>){
+    for _i in 0..fruits.len(){
+        let fruit = fruits.remove(0);
+        if !fruit.popping {
+            fruits.push(fruit);
+        }
     }
-
-    //Apply drag
-    let drag_vector = num!(0.99);
-    fruit.vel *= drag_vector;
-}
-
-fn polish_velocity(fruit: &mut Fruit){
-    if fruit.vel.y < num!(0.05) {
-        fruit.vel.y = num!(0.0);
-    }
-}
-
-fn apply_velocity(fruit: &mut Fruit){
-    fruit.pos = fruit.vel + fruit.pos;
-}
-
-fn check_wall_collisions(fruit: &mut Fruit){
-    //Check wall collisions, modify vel, clamp position if necessary
-    let x_min = (0 - SPRITE_SIZE as i32).into();
-    let x_max = (WIDTH - SPRITE_SIZE - fruit.size as i32).into();
-    let y_min = (0 - SPRITE_SIZE as i32).into();
-    let y_max = (HEIGHT - SPRITE_SIZE - fruit.size as i32).into();
-    let restitution = num!(0.5);
-
-    if fruit.pos.x <= x_min {
-        fruit.vel.x = -fruit.vel.x * restitution;
-        fruit.pos.x = x_min;
-    }
-    if fruit.pos.x >= x_max{
-        fruit.vel.x = -fruit.vel.x * restitution;
-        fruit.pos.x = x_max;
-    }
-    if fruit.pos.y <= y_min{
-        fruit.vel.y = -fruit.vel.y * restitution;
-        fruit.pos.y = y_min;
-    }
-    //Remember that max height is the bottom of the screen
-    if fruit.pos.y >= y_max{
-        fruit.vel.y = -fruit.vel.y * restitution;
-        fruit.pos.y = y_max;
-    }
-    //No need to check the top of the screen yet, that's the loss condition.    
 }
 
 fn find_all_fruit_collisions(fruits: &[Fruit]) -> Vec<(usize, usize)>{
     //Storage
     let mut collisions : Vec<(usize,usize)> = Vec::new();
-    let unit_vector: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)};
 
     //Really bad algorithm: check all other fruits to see if they're in touching distance
     let num_fruits = fruits.len();
@@ -146,7 +163,7 @@ fn find_all_fruit_collisions(fruits: &[Fruit]) -> Vec<(usize, usize)>{
             continue;
         }
         let fruit = fruits.get(fruit_index).unwrap();
-        let fruit_phsyic_center: Vector2D<FixedNum<8>> = fruit.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
+        let fruit_phsyic_center = fruit.get_phsyic_center();
 
         for other_index in 0..num_fruits{
             //don't collide with self or popped fruits
@@ -155,7 +172,7 @@ fn find_all_fruit_collisions(fruits: &[Fruit]) -> Vec<(usize, usize)>{
             }
 
             let other = fruits.get(other_index).unwrap();
-            let other_physic_center: Vector2D<FixedNum<8>> = other.pos + unit_vector * (<i32 as Into<FixedNum<8>>>::into(SPRITE_SIZE)/num!(2.0));
+            let other_physic_center = other.get_phsyic_center();
 
             //Find vector pointing from other to fruit
             let difference_vector = fruit_phsyic_center - other_physic_center;
@@ -174,13 +191,12 @@ fn find_all_fruit_collisions(fruits: &[Fruit]) -> Vec<(usize, usize)>{
 fn try_merge_collisions<'a>(collisions: &mut Vec<(usize, usize)>, fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, sprites: &'a [SpriteVram]){
     //Each tuple in collisions is (fruit1_index, fruit2_index) experiencing a collision
     for collision_index in 0..collisions.len(){
-        println!("Getting collision {} when it has len {}", collision_index, collisions.len());
         let (fruit1_index, fruit2_index) = collisions.remove(0);
         let fruit1 = fruits.get(fruit1_index).unwrap();
         let fruit2 = fruits.get(fruit2_index).unwrap();
 
-        //Skip if the two fruits are not the same stage and add back the collision
-        if fruit1.stage != fruit2.stage {
+        //Skip if the two fruits are not the same stage or one is max size and add back the collision
+        if fruit1.stage != fruit2.stage || fruit1.stage as usize == sprites.len()-1 || fruit2.stage as usize == sprites.len()-1 {
             collisions.push((fruit1_index, fruit2_index));
             continue;
         }
@@ -262,15 +278,15 @@ fn resolve_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut [Fruit]
     }
 }
 
-
 pub fn update_all_fruits<'a>(fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, sprites: &'a [SpriteVram]){
+    remove_all_popped_fruits(fruits);
     let mut collisions = find_all_fruit_collisions(fruits.as_slice());
     try_merge_collisions(&mut collisions, fruits, oam, sprites);
     resolve_collisions(&mut collisions, fruits);
 
     for _i in 0..fruits.len(){
         let mut fruit = fruits.remove(0);
-        fruit.update(fruits.as_mut_slice());
+        fruit.update();
         fruits.push(fruit);
     }
 }
