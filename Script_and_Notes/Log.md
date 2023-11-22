@@ -144,3 +144,7 @@ Figured it out by computing each fruit's size as a percentage to the watermelon,
 The screen/box boundary calculation is wrong, redoing it. Here's some math:
 (it should be W+(32-f.s/2), forgot the /2 part)
 ![[Pasted image 20231121205507.png]]
+
+# 14
+master fa20db9 - Core game done! Gup holds fruits and drops them. This is the 0.1.0 Release!!
+
