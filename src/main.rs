@@ -18,7 +18,9 @@ extern crate alloc;
 use agb::{
     display::object::{SpriteVram, Graphics, include_aseprite, Sprite},
     fixnum::{FixedNum, Vector2D, num}, input::Button,
-    rng::gen
+    rng::gen, 
+    sound::mixer::{SoundChannel, Frequency},
+    include_wav
 };
 use fruit::{create_fruit, Fruit, update_all_fruits};
 use player::create_player;
@@ -30,8 +32,12 @@ const FRUIT_SPRITELIST: &[Sprite] = FRUIT_SPRITESHEET.sprites();
 const GUP_SPRITESHEET: &Graphics = include_aseprite!("graphics/gup.ase");
 const GUP_SPRITELIST: &[Sprite] = GUP_SPRITESHEET.sprites();
 
+//const CHASER: &[u8] = include_wav!("sounds/music/CHASER.wav");
+const KATAMARI: &[u8] = include_wav!("sounds/music/KATAMARI.wav");
+
 mod fruit;
 mod player;
+mod sounds;
 
 // The main function must take 1 arguments and never return. The agb::entry decorator
 // ensures that everything is in order. `agb` will call this after setting up the stack
@@ -64,6 +70,16 @@ fn main(mut gba: agb::Gba) -> ! {
 
     //Create player/gup
     let mut player = create_player(gup_sprites.as_slice(), &oam);
+
+    //Create music stuff
+    //Create Channel
+    let mut channel = SoundChannel::new_high_priority(KATAMARI);
+    channel.should_loop();
+    channel.playback(num!(9.0));
+    //Put channel in mixer
+    let mut mixer = gba.mixer.mixer(Frequency::Hz10512);
+    mixer.play_sound(channel);
+    mixer.enable();
     
     //Core Loop
     loop {
@@ -98,9 +114,10 @@ fn main(mut gba: agb::Gba) -> ! {
         //update all fruits
         update_all_fruits(&mut fruit_objects, &oam, fruit_sprites.as_slice());
 
-        //Commit objects, wait for vblank, update inputs
+        //Commit objects, wait for vblank, update inputs, mixer computer
         oam.commit();
         vblank.wait_for_vblank();
         input.update();
+        mixer.frame();
     }
 }
