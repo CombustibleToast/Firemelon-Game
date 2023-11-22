@@ -27,6 +27,9 @@ use alloc::vec::Vec;
 const FRUIT_SPRITESHEET: &Graphics = include_aseprite!("graphics/Fruits.ase");
 const FRUIT_SPRITELIST: &[Sprite] = FRUIT_SPRITESHEET.sprites();
 
+const GUP_SPRITESHEET: &Graphics = include_aseprite!("graphics/gup.ase");
+const GUP_SPRITELIST: &[Sprite] = GUP_SPRITESHEET.sprites();
+
 mod fruit;
 
 // The main function must take 1 arguments and never return. The agb::entry decorator
@@ -42,8 +45,14 @@ fn main(mut gba: agb::Gba) -> ! {
     //Load Fruit sprites
     //let fruit_sprites: [SpriteVram; FRUIT_SPRITELIST.len()] = [oam.sprite(&FRUIT_SPRITELIST[i]); FRUIT_SPRITELIST.len()];
     let mut fruit_sprites: Vec<SpriteVram> = Vec::new();
-    for i in 0..FRUIT_SPRITELIST.len() {
-        fruit_sprites.push(oam.sprite(&FRUIT_SPRITELIST[i]));
+    for sprite in FRUIT_SPRITELIST {
+        fruit_sprites.push(oam.sprite(sprite));
+    }
+
+    //Load Gup/player sprites
+    let mut gup_sprites: Vec<SpriteVram> = Vec::new();
+    for sprite in GUP_SPRITELIST {
+        gup_sprites.push(oam.sprite(sprite));
     }
 
     //Create fruit object storage
@@ -51,7 +60,7 @@ fn main(mut gba: agb::Gba) -> ! {
     //Bootstrap fruit engine lol
     //let initial_pos: Vector2D<FixedNum<8>> = Vector2D::new((WIDTH/2).into(), (HEIGHT+5).into());
     let initial_pos: Vector2D<FixedNum<8>> = Vector2D::new(num!(50.0), num!(50.0));
-    let mut held_fruit: Fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), 0, 0);
+    let mut held_fruit: Fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), 0);
     
     //Core Loop
     loop {
@@ -63,12 +72,13 @@ fn main(mut gba: agb::Gba) -> ! {
             //Fruit was just dropped, create new fruit
             //Create position - For now it's a default value, will be set to the player's pos in the future
             let initial_pos: Vector2D<FixedNum<8>> = Vector2D::new((WIDTH/2).into(), (5).into());
-            held_fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), (fruit_objects.len() as i32)%11, fruit_objects.len() as i32);
+            //held_fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), (fruit_objects.len() as i32)%11);
+            held_fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), 4);
             held_fruit.object.show();
         }
 
         //update all fruits
-        fruit_objects = update_all_fruits(fruit_objects);
+        update_all_fruits(&mut fruit_objects, &oam, fruit_sprites.as_slice());
 
         //Commit objects, wait for vblank, update inputs
         oam.commit();
