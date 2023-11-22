@@ -1,10 +1,8 @@
 use agb::{
-    display::object::{include_aseprite, Graphics, OamManaged, Object, Sprite, SpriteVram},
-    display::{HEIGHT, WIDTH},
-    fixnum::{num, FixedNum, Num, Vector2D},
-    println,
+    display::object::{OamManaged, Object, SpriteVram},
+    display::WIDTH,
+    fixnum::{num, FixedNum, Vector2D},
 };
-use alloc::vec::Vec;
 
 const WALK_SPEED: i32 = 2;
 const X_MIN: i32 = WIDTH/2;

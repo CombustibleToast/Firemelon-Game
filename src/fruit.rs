@@ -1,9 +1,8 @@
 use agb::{
-    display::object::{Object, SpriteVram, Graphics, include_aseprite, Sprite, OamManaged},
+    display::object::{Object, SpriteVram, OamManaged},
     display::{HEIGHT, WIDTH},
     fixnum::{FixedNum, Vector2D, num, Num}, println,
-    syscall::sqrt,
-    rng,
+    syscall::sqrt
 };
 use alloc::vec::Vec;
 
@@ -11,10 +10,6 @@ use alloc::vec::Vec;
 // const UNIT_VECTOR: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)}; // this is NOT the unit vector lmao
 const SPRITE_SIZE: i32 = 64;
 const FRUIT_DIAMETERS: [i32; 11] = [9, 11, 15, 18, 22, 29, 32, 39, 42, 53, 64];
-const BOX_LEFT: i32 = 0;
-const BOX_RIGHT: i32 = WIDTH;
-const BOX_TOP: i32 = 0;
-const BOX_BOTTOM: i32 = HEIGHT;
 
 static mut NEXT_FRUIT_ID: i32 = 0;
 const LEFT_WALL: i32 = WIDTH/2;
@@ -76,6 +71,7 @@ impl Fruit<'_>{
         //let mut fruitCollisions : Vec<(&Fruit,&Fruit)> = check_other_fruit_collisions(self, others, &mut fruitCollisions); 
         
         //Apply velocity
+        self.polish_velocity();
         self.apply_velocity();
 
         //Try to merge with other fruit
@@ -195,7 +191,7 @@ fn find_all_fruit_collisions(fruits: &[Fruit]) -> Vec<(usize, usize)>{
 
 fn try_merge_collisions<'a>(collisions: &mut Vec<(usize, usize)>, fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, sprites: &'a [SpriteVram]){
     //Each tuple in collisions is (fruit1_index, fruit2_index) experiencing a collision
-    for collision_index in 0..collisions.len(){
+    for _i in 0..collisions.len(){
         let (fruit1_index, fruit2_index) = collisions.remove(0);
         let fruit1 = fruits.get(fruit1_index).unwrap();
         let fruit2 = fruits.get(fruit2_index).unwrap();

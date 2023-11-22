@@ -16,10 +16,9 @@
 extern crate alloc;
 
 use agb::{
-    display::{WIDTH, HEIGHT},
-    display::object::{Object, SpriteVram, Graphics, include_aseprite, Sprite, OamManaged},
-    fixnum::{FixedNum, Vector2D, num, Num}, input::{Button, self}, interrupt::{self, VBlank},
-    rng::gen, println,
+    display::object::{SpriteVram, Graphics, include_aseprite, Sprite},
+    fixnum::{FixedNum, Vector2D, num}, input::Button,
+    rng::gen
 };
 use fruit::{create_fruit, Fruit, update_all_fruits};
 use player::create_player;
