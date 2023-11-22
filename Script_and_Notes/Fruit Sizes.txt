@@ -1,0 +1,13 @@
+fruit   actual percent pixel diam
+
+cherry:	21	14%	9
+strawb: 27	17%	11
+grape : 37	24%	15
+orange: 43	28%	18
+persim: 53	35%	22
+apple : 68	45%	29
+pear  : 76	50%	32
+peach : 95	62%	39
+pineap: 103	67%	42
+cantel: 127	83%	53
+waterm: 152	100%	64

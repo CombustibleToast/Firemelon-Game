@@ -128,3 +128,17 @@ This problem can probably be fixed in one of two ways:
 master 5a96f83 - Removed static collision logic from collision function and the borrow checker allows it now.
 master c536ed0 - Began implementing collision-merge, which requires GBA and graphics structs to work.
 master 89661d1 - Refactoring done but still need to figure out how to change the properties of both during collision.
+
+# 13
+master 029d462 - Implemented dynamic collisions but some math is wrong
+master 028cd94 - Math is now right. Forgot to add the merged fruit to the vec containing all fruits, which is causing me some lifetime headaches.
+master 4a542d9 - Fixed the above problem. Solved by changing `fruits: &'a mut Vec\<Fruit\<'a>>` to `fruits: &mut Vec\<Fruit\<'a>>`. Huge.
+
+Trying to properly make sprites, here's some math
+![[Pasted image 20231121191519.png]]
+
+Figured it out by computing each fruit's size as a percentage to the watermelon, then converting that to pixel art pixels. The above image wasn't used but it looks cool lol
+
+The screen/box boundary calculation is wrong, redoing it. Here's some math:
+(it should be W+(32-f.s/2), forgot the /2 part)
+![[Pasted image 20231121205507.png]]
