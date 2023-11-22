@@ -17,10 +17,12 @@ const BOX_TOP: i32 = 0;
 const BOX_BOTTOM: i32 = HEIGHT;
 
 static mut NEXT_FRUIT_ID: i32 = 0;
+const LEFT_WALL: i32 = WIDTH/2;
+const RIGHT_WALL: i32 = WIDTH-32;
 
 pub struct Fruit<'a>{
     id: i32,
-    pos: Vector2D<FixedNum<8>>,
+    pub pos: Vector2D<FixedNum<8>>,
     vel: Vector2D<FixedNum<8>>,
     stage: i32,
     size: i32,
@@ -34,15 +36,15 @@ pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites
     let object = oam.object(sprites[stage as usize].clone());
 
     //for testing, create a random velocity
-    let randvel: Vector2D<FixedNum<8>> = Vector2D { x: (rng::gen()%6 - 3).into(), y: (rng::gen()%6 - 3).into() };
+    //let randvel: Vector2D<FixedNum<8>> = Vector2D { x: (rng::gen()%6 - 3).into(), y: (rng::gen()%6 - 3).into() };
 
     let mut fruit: Fruit;
     unsafe { //unfortunately necessary for using mutable static NEXT_FRUIT_ID. Would be good to change in the future
         fruit = Fruit{
             id: NEXT_FRUIT_ID.clone(),
             pos: pos.clone(),
-            //vel: Vector2D::<FixedNum<8>> {x: num!(0.0), y: num!(0.0)},
-            vel: randvel,
+            vel: Vector2D::<FixedNum<8>> {x: num!(0.0), y: num!(0.0)},
+            // vel: randvel,
             stage: stage,
             size: FRUIT_DIAMETERS[stage as usize],
             is_freefall: false,
@@ -79,7 +81,7 @@ impl Fruit<'_>{
         //Try to merge with other fruit
 
         //Set oam object new position
-        self.object.set_position(self.pos.trunc());
+        self.set_sprite_pos();
     }
 
     fn update_velocity(&mut self){
@@ -98,10 +100,9 @@ impl Fruit<'_>{
     }
 
     fn check_wall_collisions(&mut self){
-        let physic_center = self.get_phsyic_center();
         //Calculate max x and max y values of the sprite location
-        let x_min = self.size/2 - SPRITE_SIZE/2; //negative number
-        let x_max = WIDTH + SPRITE_SIZE/2 - self.size/2;
+        let x_min = LEFT_WALL + self.size/2 - SPRITE_SIZE/2; //negative number
+        let x_max = RIGHT_WALL - SPRITE_SIZE/2 - self.size/2;
         let y_min = self.size/2 - SPRITE_SIZE/2;
         let y_max = HEIGHT - SPRITE_SIZE/2 - self.size/2;
         let restitution = num!(0.1);
@@ -134,6 +135,10 @@ impl Fruit<'_>{
 
     fn apply_velocity(&mut self){
         self.pos += self.vel;
+    }
+
+    pub fn set_sprite_pos(&mut self){
+        self.object.set_position(self.pos.trunc());
     }
 
     fn get_phsyic_center(&self) -> Vector2D<FixedNum<8>>{

@@ -19,7 +19,7 @@ use agb::{
     display::{WIDTH, HEIGHT},
     display::object::{Object, SpriteVram, Graphics, include_aseprite, Sprite, OamManaged},
     fixnum::{FixedNum, Vector2D, num, Num}, input::{Button, self}, interrupt::{self, VBlank},
-    InternalAllocator
+    rng::gen, println,
 };
 use fruit::{create_fruit, Fruit, update_all_fruits};
 use player::create_player;
@@ -60,21 +60,29 @@ fn main(mut gba: agb::Gba) -> ! {
     //Create fruit object storage
     let mut fruit_objects: Vec<fruit::Fruit> = Vec::new();
     //Bootstrap fruit engine lol
-    //let initial_pos: Vector2D<FixedNum<8>> = Vector2D::new((WIDTH/2).into(), (HEIGHT+5).into());
     let initial_pos: Vector2D<FixedNum<8>> = Vector2D::new(num!(50.0), num!(50.0));
-    let mut held_fruit: Fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), 0);
+    let mut held_fruit: Fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), (gen()%4).abs());
 
     //Create player/gup
     let mut player = create_player(gup_sprites.as_slice(), &oam);
     
     //Core Loop
     loop {
+        //Collect player input
         if input.is_pressed(Button::LEFT){
             player.walk_left();
-        }
-        if input.is_pressed(Button::RIGHT){
+        } else if input.is_pressed(Button::RIGHT){
             player.walk_right();
+        } else {
+            player.stop_walk();
         }
+
+        //Update player sprite
+        player.update_animation();
+
+        //Update held fruit position
+        held_fruit.pos = player.get_hold_vector();
+        held_fruit.set_sprite_pos();
         
         if input.is_just_pressed(Button::A){
             //Drop Fruit and move it to the vec
@@ -82,10 +90,9 @@ fn main(mut gba: agb::Gba) -> ! {
             fruit_objects.push(held_fruit);
 
             //Fruit was just dropped, create new fruit
-            //Create position - For now it's a default value, will be set to the player's pos in the future
-            let initial_pos: Vector2D<FixedNum<8>> = Vector2D::new((WIDTH/2).into(), (5).into());
+            let initial_pos = player.get_hold_vector();
             //held_fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), (fruit_objects.len() as i32)%11);
-            held_fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), 4);
+            held_fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), (gen()%4).abs());
             held_fruit.object.show();
         }
 

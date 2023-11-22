@@ -4,10 +4,11 @@ use agb::{
     fixnum::{num, FixedNum, Num, Vector2D},
     println,
 };
+use alloc::vec::Vec;
 
-const WALK_SPEED: i32 = 5;
+const WALK_SPEED: i32 = 2;
 const X_MIN: i32 = WIDTH/2;
-const X_MAX: i32 = WIDTH - 16;
+const X_MAX: i32 = WIDTH - 32;
 const WALK_SEQUENCE: [usize; 4] = [0,1,0,2];
 
 
@@ -45,6 +46,10 @@ pub fn create_player<'a>(sprites: &'a [SpriteVram], oam: &'a OamManaged) -> Play
 }
 
 impl Player<'_>{
+    pub fn get_hold_vector(&self) -> Vector2D<FixedNum<8>> {
+        return self.pos - Vector2D { x: num!(32.0), y: num!(8.0) };
+    }
+
     pub fn walk_left(&mut self) {
         self.pos.x -= WALK_SPEED;
         self.animation_state = AnimationState::WalkLeft;
@@ -56,12 +61,16 @@ impl Player<'_>{
     pub fn walk_right(&mut self) {
         self.pos.x += WALK_SPEED;
         self.animation_state = AnimationState::WalkRight;
-        if self.pos.x < X_MIN.into(){
-            self.pos.x = X_MIN.into()
+        if self.pos.x > X_MAX.into(){
+            self.pos.x = X_MAX.into()
         }
     }
 
-    fn update_animation(&mut self) {
+    pub fn stop_walk(&mut self) {
+        self.animation_state = AnimationState::Still;
+    }
+
+    pub fn update_animation(&mut self) {
         match self.animation_state{
             AnimationState::Still => {
                 self.last_sprite_change = self.sprite_change_rate-1;
@@ -84,5 +93,7 @@ impl Player<'_>{
         }
 
         self.object.set_hflip(self.flip);
+
+        self.object.set_position(self.pos.trunc());
     }
 }
