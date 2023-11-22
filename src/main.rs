@@ -65,10 +65,17 @@ fn main(mut gba: agb::Gba) -> ! {
     let mut held_fruit: Fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), 0);
 
     //Create player/gup
-    let player = create_player(gup_sprites.as_slice(), &oam);
+    let mut player = create_player(gup_sprites.as_slice(), &oam);
     
     //Core Loop
     loop {
+        if input.is_pressed(Button::LEFT){
+            player.walk_left();
+        }
+        if input.is_pressed(Button::RIGHT){
+            player.walk_right();
+        }
+        
         if input.is_just_pressed(Button::A){
             //Drop Fruit and move it to the vec
             held_fruit.drop();

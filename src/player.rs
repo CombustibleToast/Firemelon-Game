@@ -8,6 +8,8 @@ use agb::{
 const WALK_SPEED: i32 = 5;
 const X_MIN: i32 = WIDTH/2;
 const X_MAX: i32 = WIDTH - 16;
+const WALK_SEQUENCE: [usize; 4] = [0,1,0,2];
+
 
 #[derive(PartialEq)]
 enum AnimationState {
@@ -28,7 +30,7 @@ pub struct Player<'a> {
 }
 
 pub fn create_player<'a>(sprites: &'a [SpriteVram], oam: &'a OamManaged) -> Player<'a> {
-    let new_player = Player { 
+    let mut new_player = Player { 
         pos: Vector2D { x: X_MIN.into(), y: num!(20.0) }, 
         animation_state: AnimationState::Still, 
         sprites: sprites,
@@ -38,7 +40,7 @@ pub fn create_player<'a>(sprites: &'a [SpriteVram], oam: &'a OamManaged) -> Play
         sprite_change_rate: 5,
         flip: false
     };
-
+    new_player.object.show();
     return new_player;
 }
 
@@ -62,15 +64,25 @@ impl Player<'_>{
     fn update_animation(&mut self) {
         match self.animation_state{
             AnimationState::Still => {
-                self.last_sprite_change = self.sprite_change_rate;
+                self.last_sprite_change = self.sprite_change_rate-1;
                 self.frame_number = 0;
             }
             AnimationState::WalkLeft => {
-                s
+                self.last_sprite_change += 1;
+                self.flip = true;
+            }
+            AnimationState::WalkRight => {
+                self.last_sprite_change += 1;
+                self.flip = false;
             }
         }
-
         
+        if self.last_sprite_change >= self.sprite_change_rate{
+            self.last_sprite_change = 0;
+            self.frame_number = (self.frame_number + 1) % WALK_SEQUENCE.len();
+            self.object.set_sprite(self.sprites[WALK_SEQUENCE[self.frame_number]].clone());
+        }
 
+        self.object.set_hflip(self.flip);
     }
 }
