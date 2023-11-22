@@ -22,6 +22,7 @@ use agb::{
     InternalAllocator
 };
 use fruit::{create_fruit, Fruit, update_all_fruits};
+use player::create_player;
 use alloc::vec::Vec;
 
 const FRUIT_SPRITESHEET: &Graphics = include_aseprite!("graphics/Fruits.ase");
@@ -31,6 +32,7 @@ const GUP_SPRITESHEET: &Graphics = include_aseprite!("graphics/gup.ase");
 const GUP_SPRITELIST: &[Sprite] = GUP_SPRITESHEET.sprites();
 
 mod fruit;
+mod player;
 
 // The main function must take 1 arguments and never return. The agb::entry decorator
 // ensures that everything is in order. `agb` will call this after setting up the stack
@@ -61,6 +63,9 @@ fn main(mut gba: agb::Gba) -> ! {
     //let initial_pos: Vector2D<FixedNum<8>> = Vector2D::new((WIDTH/2).into(), (HEIGHT+5).into());
     let initial_pos: Vector2D<FixedNum<8>> = Vector2D::new(num!(50.0), num!(50.0));
     let mut held_fruit: Fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), 0);
+
+    //Create player/gup
+    let player = create_player(gup_sprites.as_slice(), &oam);
     
     //Core Loop
     loop {
