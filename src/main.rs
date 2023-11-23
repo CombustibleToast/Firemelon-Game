@@ -25,15 +25,13 @@ use agb::{
 use fruit::{create_fruit, Fruit, update_all_fruits};
 use player::create_player;
 use alloc::vec::Vec;
+use sounds::start_bgm;
 
 const FRUIT_SPRITESHEET: &Graphics = include_aseprite!("graphics/Fruits.ase");
 const FRUIT_SPRITELIST: &[Sprite] = FRUIT_SPRITESHEET.sprites();
 
 const GUP_SPRITESHEET: &Graphics = include_aseprite!("graphics/gup.ase");
 const GUP_SPRITELIST: &[Sprite] = GUP_SPRITESHEET.sprites();
-
-//const CHASER: &[u8] = include_wav!("sounds/music/CHASER.wav");
-const KATAMARI: &[u8] = include_wav!("sounds/music/KATAMARI.wav");
 
 mod fruit;
 mod player;
@@ -72,14 +70,7 @@ fn main(mut gba: agb::Gba) -> ! {
     let mut player = create_player(gup_sprites.as_slice(), &oam);
 
     //Create music stuff
-    //Create Channel
-    let mut channel = SoundChannel::new_high_priority(KATAMARI);
-    channel.should_loop();
-    channel.playback(num!(9.0));
-    //Put channel in mixer
-    let mut mixer = gba.mixer.mixer(Frequency::Hz10512);
-    mixer.play_sound(channel);
-    mixer.enable();
+    let mut     sounds = start_bgm(gba.mixer.mixer(Frequency::Hz10512));
     
     //Core Loop
     loop {
@@ -90,6 +81,10 @@ fn main(mut gba: agb::Gba) -> ! {
             player.walk_right();
         } else {
             player.stop_walk();
+        }
+
+        if input.is_just_pressed(Button::B) {
+            sounds.play_random_song();
         }
 
         //Update player sprite
@@ -118,6 +113,6 @@ fn main(mut gba: agb::Gba) -> ! {
         oam.commit();
         vblank.wait_for_vblank();
         input.update();
-        mixer.frame();
+        sounds.frame();
     }
 }
