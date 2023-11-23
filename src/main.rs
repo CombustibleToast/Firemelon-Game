@@ -16,11 +16,12 @@
 extern crate alloc;
 
 use agb::{
-    display::object::{SpriteVram, Graphics, include_aseprite, Sprite},
+    display::{object::{SpriteVram, Graphics, include_aseprite, Sprite, PaletteVram, ObjectTextRender, Size}, Font, palette16::Palette16},
     fixnum::{FixedNum, Vector2D, num}, input::Button,
     rng::gen, 
     sound::mixer::{SoundChannel, Frequency},
-    include_wav
+    println,
+    include_font
 };
 use fruit::{create_fruit, Fruit, update_all_fruits};
 use player::create_player;
@@ -32,6 +33,9 @@ const FRUIT_SPRITELIST: &[Sprite] = FRUIT_SPRITESHEET.sprites();
 
 const GUP_SPRITESHEET: &Graphics = include_aseprite!("graphics/gup.ase");
 const GUP_SPRITELIST: &[Sprite] = GUP_SPRITESHEET.sprites();
+
+const FONT: Font = include_font!("graphics/BrunoAce-Regular.ttf", 12); //12?
+const PALETTE: [u16; 16] = [0x0, 0xFF_FF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,];
 
 mod fruit;
 mod player;
@@ -70,10 +74,24 @@ fn main(mut gba: agb::Gba) -> ! {
     let mut player = create_player(gup_sprites.as_slice(), &oam);
 
     //Create music stuff
-    let mut     sounds = start_bgm(gba.mixer.mixer(Frequency::Hz10512));
+    let mut sounds = start_bgm(gba.mixer.mixer(Frequency::Hz10512));
+
+    //Create performance timer
+    let mut timer = gba.timers.timers().timer2;
+    timer.set_divider(agb::timer::Divider::Divider256);
+    timer.set_enabled(true);
+
+    //Create text writer
+    let palette = PaletteVram::new(&Palette16::new(PALETTE)).unwrap();
+    let mut writer = ObjectTextRender::new(&FONT, Size::S16x16, palette);
+    writer.write_str("Test");
+
     
     //Core Loop
     loop {
+        //Start debug timer
+        let start_time = timer.value();
+
         //Collect player input
         if input.is_pressed(Button::LEFT){
             player.walk_left();
@@ -108,6 +126,10 @@ fn main(mut gba: agb::Gba) -> ! {
 
         //update all fruits
         update_all_fruits(&mut fruit_objects, &oam, fruit_sprites.as_slice());
+
+        //Collect timer and print
+        let end_time = timer.value();
+        println!("Update took {}", end_time.wrapping_sub(start_time));
 
         //Commit objects, wait for vblank, update inputs, mixer computer
         oam.commit();
