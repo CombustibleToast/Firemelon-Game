@@ -9,23 +9,23 @@ use agb::{
 
 //const CHASER: &[u8] = include_wav!("sounds/music/CHASER.wav");
 // const KATAMARI: &[u8] = include_wav!("sounds/music/KATAMARI.wav");
-// const BGM: [&[u8]; 0] = [];
-const BGM: [&[u8]; 6] = [
-    include_wav!("sounds/music/KATAMARI.wav"),
-    include_wav!("sounds/music/ACT RIGHT.wav"),
-    include_wav!("sounds/music/GIRL HELL 1999.wav"),
-    include_wav!("sounds/music/MURDER EVERY 1 U KNOW!.wav"),
-    include_wav!("sounds/music/P3T.wav"),
-    include_wav!("sounds/music/PUSH UR T3MPRR.wav")
-];
+const BGM: [&[u8]; 0] = [];
+// const BGM: [&[u8]; 6] = [
+//     include_wav!("sounds/music/KATAMARI.wav"),
+//     include_wav!("sounds/music/ACT RIGHT.wav"),
+//     include_wav!("sounds/music/GIRL HELL 1999.wav"),
+//     include_wav!("sounds/music/MURDER EVERY 1 U KNOW!.wav"),
+//     include_wav!("sounds/music/P3T.wav"),
+//     include_wav!("sounds/music/PUSH UR T3MPRR.wav")
+// ];
 
-pub struct Sound_Player<'a>{
+pub struct SoundPlayer<'a>{
     mixer: Mixer<'a>,
     current_playing_channel: Option<ChannelId>
 }
 
-pub fn start_bgm(mixer: Mixer) -> Sound_Player {
-    let mut player = Sound_Player{
+pub fn start_bgm(mixer: Mixer) -> SoundPlayer {
+    let mut player = SoundPlayer{
         mixer: mixer,
         current_playing_channel: None
     };
@@ -33,7 +33,7 @@ pub fn start_bgm(mixer: Mixer) -> Sound_Player {
     return player;
 }
 
-impl Sound_Player<'_>{
+impl SoundPlayer<'_>{
     pub fn frame(&mut self){
         self.mixer.frame();
 
@@ -44,8 +44,6 @@ impl Sound_Player<'_>{
     }
 
     pub fn play_random_song(&mut self) {
-        println!("Playing random song!");
-
         //Don't do anything if there are no songs loaded (omitted during development)
         if BGM.len() == 0{
             return;
