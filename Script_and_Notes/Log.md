@@ -147,4 +147,8 @@ The screen/box boundary calculation is wrong, redoing it. Here's some math:
 
 # 14
 master fa20db9 - Core game done! Gup holds fruits and drops them. This is the 0.1.0 Release!!
+master e31c090 - Adding KATAMARI by FEMTANYL to test out the game's BGM
+master ee31747 - The entire CHASER album now plays one after the other. Also can press B to play another song at random.
 
+# 15
+Attempting to add a text writer to display lag information
