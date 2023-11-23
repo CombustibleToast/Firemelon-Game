@@ -166,7 +166,7 @@ fn find_all_fruit_collisions(fruits: &[Fruit]) -> Vec<(usize, usize)>{
         let fruit = fruits.get(fruit_index).unwrap();
         let fruit_phsyic_center = fruit.get_phsyic_center();
 
-        for other_index in 0..num_fruits{
+        for other_index in fruit_index+1..num_fruits{
             //don't collide with self or popped fruits
             if fruit_index == other_index || fruits[other_index].popping{
                 continue;
@@ -180,9 +180,10 @@ fn find_all_fruit_collisions(fruits: &[Fruit]) -> Vec<(usize, usize)>{
 
             //They are touching when the magnitude <= sum of radii
             let overlap = -(difference_vector.fast_magnitude() - fruit.size/2 - other.size/2);
-            if overlap > 0.into() && !collisions.contains(&(other_index, fruit_index)){
+            // if overlap > 0.into() && !collisions.contains(&(other_index, fruit_index)){
+            if overlap > 0.into() {
                 collisions.push((fruit_index,other_index));
-                println!("Collision between {}, {}", fruit_index, other_index);
+                // println!("Collision between {}, {}", fruit_index, other_index);
             }
         }
     }
