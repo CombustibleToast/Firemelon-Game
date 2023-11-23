@@ -1,1 +1,1 @@
-agb-gbafix target/thumbv4t-none-eabi/debug/firemelon -o firemelon.gba
+agb-gbafix target/thumbv4t-none-eabi/release/firemelon -o firemelon.gba
