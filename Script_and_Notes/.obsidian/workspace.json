@@ -8,6 +8,24 @@
         "type": "tabs",
         "children": [
           {
+            "id": "baa77203649e350f",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Script.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "532a48fd8337de32",
+        "type": "tabs",
+        "children": [
+          {
             "id": "639c146432a0e0bd",
             "type": "leaf",
             "pinned": true,
@@ -19,18 +37,6 @@
                 "source": false
               },
               "pinned": true
-            }
-          },
-          {
-            "id": "baa77203649e350f",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "1.md",
-                "mode": "source",
-                "source": false
-              }
             }
           }
         ]
@@ -99,7 +105,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Log.md",
+                "file": "Script.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -116,7 +122,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Log.md",
+                "file": "Script.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -139,7 +145,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Log.md"
+                "file": "Script.md"
               }
             }
           }
@@ -160,12 +166,12 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "639c146432a0e0bd",
+  "active": "baa77203649e350f",
   "lastOpenFiles": [
+    "Log.md",
+    "Script.md",
     "Attachments/Pasted image 20231121205507.png",
     "Attachments/Pasted image 20231121191519.png",
-    "1.md",
-    "Log.md",
     "Attachments"
   ]
 }
