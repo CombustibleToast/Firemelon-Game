@@ -1,5 +1,6 @@
 use agb::{
-    display::object::{Object, SpriteVram, OamManaged},
+    display::object::{Object, SpriteVram, OamManaged, self},
+    display::affine::AffineMatrix,
     display::{HEIGHT, WIDTH},
     fixnum::{FixedNum, Vector2D, num, Num}, println,
     syscall::sqrt
@@ -8,6 +9,7 @@ use alloc::vec::Vec;
 
 // const GRAVITY: FixedNum<8> = num!(0.5);
 // const UNIT_VECTOR: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)}; // this is NOT the unit vector lmao
+const FRUIT_GENERATION_TIME: i32 = 25;
 const SPRITE_SIZE: i32 = 64;
 const FRUIT_DIAMETERS: [i32; 11] = [9, 11, 15, 18, 22, 29, 32, 39, 42, 53, 64];
 
@@ -23,7 +25,8 @@ pub struct Fruit<'a>{
     size: i32,
     is_freefall: bool,
     pub object: Object<'a>,
-    popping: bool
+    popping: bool,
+    generating_frames_remaining: i32
 }
 
 pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites: &'a [SpriteVram], stage: i32) -> Fruit<'a>{
@@ -44,7 +47,8 @@ pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites
             size: FRUIT_DIAMETERS[stage as usize],
             is_freefall: false,
             object: object,
-            popping: false
+            popping: false,
+            generating_frames_remaining: FRUIT_GENERATION_TIME
         };
         NEXT_FRUIT_ID += 1;
     }
@@ -62,6 +66,17 @@ impl Fruit<'_>{
     }
 
     pub fn update(&mut self){
+        //Update popping and generating fruit sizes.
+        if self.popping || self.generating_frames_remaining >= 0 {
+            self.update_size();
+            return;
+        }
+
+        //Don't process non-phsyic'd fruits
+        if !self.is_freefall {
+            return;
+        }
+
         //Update velocity
         self.update_velocity();
 
@@ -78,6 +93,23 @@ impl Fruit<'_>{
 
         //Set oam object new position
         self.set_sprite_pos();
+    }
+
+    fn update_size(&mut self){
+        //Scale value is the denominator, e.g. vector(2,2) will scale things by half.
+        //For generating fruit, scale should be 0 when frames remaining = 0, and some high number when frames remaining = FRUIT_GENERATION_TIME
+        //Along this curve, because linear does not look good when scaling
+        if self.generating_frames_remaining >= 0 {
+            // let scale: FixedNum<8> = <i32 as Into<FixedNum<8>>>::into(FRUIT_GENERATION_TIME - self.generating_frames_remaining) / FRUIT_GENERATION_TIME; //Reverse linear generation
+            // let scale: FixedNum<8> = <i32 as Into<FixedNum<8>>>::into(1 + self.generating_frames_remaining); //Linear generation
+            let scale: FixedNum<8> = num!(1.0) * pow((1 + self.generating_frames_remaining).into(), 3);
+            let matrix = AffineMatrix::from_scale(Vector2D { x: scale, y: scale });
+            let matrix_instance = object::AffineMatrixInstance::new(matrix.to_object_wrapping());
+            self.object.set_affine_matrix(matrix_instance);
+            self.object.show_affine(object::AffineMode::Affine);
+            self.generating_frames_remaining -= 1;
+            println!("Scale of fruit is {}", scale);
+        }
     }
 
     fn update_velocity(&mut self){
@@ -145,9 +177,11 @@ impl Fruit<'_>{
 
 fn remove_all_popped_fruits(fruits: &mut Vec<Fruit>){
     for _i in 0..fruits.len(){
-        let fruit = fruits.remove(0);
+        let mut fruit = fruits.remove(0);
         if !fruit.popping {
             fruits.push(fruit);
+        } else {
+            fruit.object.hide();
         }
     }
 }
@@ -207,7 +241,9 @@ fn try_merge_collisions<'a>(collisions: &mut Vec<(usize, usize)>, fruits: &mut V
         //Create new fruit inbetween the two
         let new_fruit_pos = (fruit1.pos - fruit1.pos)/2 + fruit1.pos; // this probably isn't right, might need to get physic center and convert back
         //new_fruits.push(create_fruit(new_fruit_pos, oam, sprites, fruit1.stage + 1));
-        fruits.push(create_fruit(new_fruit_pos, oam, sprites, fruit1.stage + 1));
+        let mut new_fruit = create_fruit(new_fruit_pos, oam, sprites, fruit1.stage + 1);
+        new_fruit.is_freefall = true;
+        fruits.push(new_fruit);
 
         //Mark the two fruits as deleted and play its disappearing animation
         pop_fruit(&fruit1_index, fruits); //TODO: these can be done with less borrow jank
@@ -296,4 +332,14 @@ pub fn update_all_fruits<'a>(fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, s
 //This could very easily be a macro, I just don't want to learn macros right now
 pub fn dot_product(v1: &Vector2D<FixedNum<8>>, v2: &Vector2D<FixedNum<8>>) -> FixedNum<8> {
     return v1.x * v2.x + v1.y * v2.y;
+}
+
+//There's definitely a faster algorithm for this
+pub fn pow(base: FixedNum<8>, power: i32) -> FixedNum<8>{
+    let mut product = base.clone();
+    for _i in 1..power{
+        product *= base;
+    }
+    println!("{}^{} = {}", base, power, product);
+    return product;
 }
