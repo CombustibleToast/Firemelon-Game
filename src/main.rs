@@ -16,7 +16,7 @@
 extern crate alloc;
 
 use agb::{
-    display::{object::{SpriteVram, Graphics, include_aseprite, Sprite, PaletteVram, ObjectTextRender, Size}, Font, palette16::Palette16},
+    display::{object::{SpriteVram, Graphics, include_aseprite, Sprite, PaletteVram, ObjectTextRender, Size, TextAlignment}, Font, palette16::Palette16},
     fixnum::{FixedNum, Vector2D, num}, input::Button,
     rng::gen, 
     sound::mixer::{SoundChannel, Frequency},
@@ -80,12 +80,6 @@ fn main(mut gba: agb::Gba) -> ! {
     let mut timer = gba.timers.timers().timer2;
     timer.set_divider(agb::timer::Divider::Divider256);
     timer.set_enabled(true);
-
-    //Create text writer
-    let palette = PaletteVram::new(&Palette16::new(PALETTE)).unwrap();
-    let mut writer = ObjectTextRender::new(&FONT, Size::S16x16, palette);
-    writer.write_str("Test");
-
     
     //Core Loop
     loop {
@@ -126,6 +120,7 @@ fn main(mut gba: agb::Gba) -> ! {
 
         //update all fruits
         update_all_fruits(&mut fruit_objects, &oam, fruit_sprites.as_slice());
+        held_fruit.update();
 
         //Collect timer and print
         let end_time = timer.value();
