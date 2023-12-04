@@ -152,8 +152,14 @@ master ee31747 - The entire CHASER album now plays one after the other. Also can
 
 # 15
 Attempting to add a text writer to display lag information
+
 # 16
-12/4
+12/5
 master 8d29b89 - affine stuff
 master b1ecf70 - Removed text stuff
 Removed text stuff because I have no idea what I'm doing and started adding funny affine scaling. It doesn't work super well right now but it does kinda work. Also still need to implement preventing the player from dropping the fruit instantly. There may be a problem with affine matrix instances if too many merge at the same time. It might be worth pre-calculating them at the beginning (or even compile time) and loading them for use whenever a fruit needs an affine matrix. Kinda like a sequence like gup's animation.
+
+# 17
+12/4
+master a596a70 - affine stuff now working and looks pretty good
+There's still a problem with the affine stuff that when there are too many fruits on screen some of the fruit half disappear. In the future, consider either or both un-setting affine mode when the animation is done and/or pre-calculating all necessary affine matricies as AffineMatrix objects, then fruits can create an instance from them as needed and apply it to themselves. Also, because of this I don't think showing rotation will be possible because the gba only allows for so many affine matricies to be stored in vram. 
