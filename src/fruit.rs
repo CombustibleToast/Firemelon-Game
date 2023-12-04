@@ -26,7 +26,8 @@ pub struct Fruit<'a>{
     is_freefall: bool,
     pub object: Object<'a>,
     popping: bool,
-    generating_frames_remaining: i32
+    generating_frames_remaining: i32,
+    popping_frames_remaining: i32,
 }
 
 pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites: &'a [SpriteVram], stage: i32) -> Fruit<'a>{
@@ -48,7 +49,8 @@ pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites
             is_freefall: false,
             object: object,
             popping: false,
-            generating_frames_remaining: FRUIT_GENERATION_TIME
+            generating_frames_remaining: FRUIT_GENERATION_TIME,
+            popping_frames_remaining: -1,
         };
         NEXT_FRUIT_ID += 1;
     }
@@ -67,7 +69,7 @@ impl Fruit<'_>{
 
     pub fn update(&mut self){
         //Update popping and generating fruit sizes.
-        if self.popping || self.generating_frames_remaining >= 0 {
+        if self.generating_frames_remaining >= 0 || self.popping_frames_remaining >= 0 {
             self.update_size();
             return;
         }
@@ -97,18 +99,28 @@ impl Fruit<'_>{
 
     fn update_size(&mut self){
         //Scale value is the denominator, e.g. vector(2,2) will scale things by half.
-        //For generating fruit, scale should be 0 when frames remaining = 0, and some high number when frames remaining = FRUIT_GENERATION_TIME
-        //Along this curve, because linear does not look good when scaling
+        //For generating fruit, scale should be 0 when frames remaining = 0, and 10 when frames remaining = FRUIT_GENERATION_TIME
         if self.generating_frames_remaining >= 0 {
-            // let scale: FixedNum<8> = <i32 as Into<FixedNum<8>>>::into(FRUIT_GENERATION_TIME - self.generating_frames_remaining) / FRUIT_GENERATION_TIME; //Reverse linear generation
-            // let scale: FixedNum<8> = <i32 as Into<FixedNum<8>>>::into(1 + self.generating_frames_remaining); //Linear generation
-            let scale: FixedNum<8> = num!(1.0) * pow((1 + self.generating_frames_remaining).into(), 3);
+            let scale: FixedNum<8> = (num!(1.0) + num!(10.0) * <i32 as Into<FixedNum<8>>>::into(self.generating_frames_remaining)/FRUIT_GENERATION_TIME).into();
             let matrix = AffineMatrix::from_scale(Vector2D { x: scale, y: scale });
             let matrix_instance = object::AffineMatrixInstance::new(matrix.to_object_wrapping());
             self.object.set_affine_matrix(matrix_instance);
             self.object.show_affine(object::AffineMode::Affine);
             self.generating_frames_remaining -= 1;
-            println!("Scale of fruit is {}", scale);
+            return;
+        }
+
+        //Should be like generating fruit scale but reversed
+        //For popping fruit, scale should be 10 when frames remaining = 0, and 0 when frames remaining = FRUIT_GENERATION_TIME
+        if self.popping_frames_remaining >= 0 {
+            let scale: FixedNum<8> = (num!(1.0) + num!(10.0) * <i32 as Into<FixedNum<8>>>::into(FRUIT_GENERATION_TIME - self.popping_frames_remaining)/FRUIT_GENERATION_TIME).into();
+            let matrix = AffineMatrix::from_scale(Vector2D { x: scale, y: scale });
+            let matrix_instance = object::AffineMatrixInstance::new(matrix.to_object_wrapping());
+            self.object.set_affine_matrix(matrix_instance);
+            self.object.show_affine(object::AffineMode::Affine);
+            println!("Fruit {} has {} popping frames remaining and scale = {}", self.id, self.popping_frames_remaining, scale);
+            self.popping_frames_remaining -= 1;
+            return;
         }
     }
 
@@ -178,7 +190,7 @@ impl Fruit<'_>{
 fn remove_all_popped_fruits(fruits: &mut Vec<Fruit>){
     for _i in 0..fruits.len(){
         let mut fruit = fruits.remove(0);
-        if !fruit.popping {
+        if !fruit.popping || fruit.popping_frames_remaining > 0 {
             fruits.push(fruit);
         } else {
             fruit.object.hide();
@@ -262,9 +274,8 @@ fn pop_fruit(index: &usize, fruits: &mut Vec<Fruit>){
     fruit.is_freefall = false;
 
     //start animation
-    //TODO: implement animation
-    //For now, just hide the fruit
-    fruit.object.hide();
+    fruit.generating_frames_remaining = -1; //truncate generation animation in case it immediately merges into a new fruit; popping takes prio
+    fruit.popping_frames_remaining = FRUIT_GENERATION_TIME;
 }
 
 fn resolve_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut [Fruit]){
