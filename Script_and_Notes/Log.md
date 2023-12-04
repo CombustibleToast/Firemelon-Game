@@ -152,3 +152,8 @@ master ee31747 - The entire CHASER album now plays one after the other. Also can
 
 # 15
 Attempting to add a text writer to display lag information
+# 16
+12/4
+master 8d29b89 - affine stuff
+master b1ecf70 - Removed text stuff
+Removed text stuff because I have no idea what I'm doing and started adding funny affine scaling. It doesn't work super well right now but it does kinda work. Also still need to implement preventing the player from dropping the fruit instantly. There may be a problem with affine matrix instances if too many merge at the same time. It might be worth pre-calculating them at the beginning (or even compile time) and loading them for use whenever a fruit needs an affine matrix. Kinda like a sequence like gup's animation.
