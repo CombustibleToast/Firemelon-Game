@@ -77,14 +77,14 @@ fn main(mut gba: agb::Gba) -> ! {
     let mut sounds = start_bgm(gba.mixer.mixer(Frequency::Hz10512));
 
     //Create performance timer
-    let mut timer = gba.timers.timers().timer2;
-    timer.set_divider(agb::timer::Divider::Divider256);
-    timer.set_enabled(true);
+    // let mut timer = gba.timers.timers().timer2;
+    // timer.set_divider(agb::timer::Divider::Divider256);
+    // timer.set_enabled(true);
     
     //Core Loop
     loop {
         //Start debug timer
-        let start_time = timer.value();
+        // let start_time = timer.value();
 
         //Collect player input
         if input.is_pressed(Button::LEFT){
@@ -123,8 +123,8 @@ fn main(mut gba: agb::Gba) -> ! {
         held_fruit.update();
 
         //Collect timer and print
-        let end_time = timer.value();
-        println!("Update took {}", end_time.wrapping_sub(start_time));
+        // let end_time = timer.value();
+        // println!("Update took {}", end_time.wrapping_sub(start_time));
 
         //Commit objects, wait for vblank, update inputs, mixer computer
         oam.commit();
