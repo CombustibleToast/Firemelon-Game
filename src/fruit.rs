@@ -1,5 +1,5 @@
 use agb::{
-    display::object::{Object, SpriteVram, OamManaged, self},
+    display::object::{Object, SpriteVram, OamManaged, self, AffineMatrixInstance},
     display::affine::AffineMatrix,
     display::{HEIGHT, WIDTH},
     fixnum::{FixedNum, Vector2D, num, Num}, println,
@@ -10,6 +10,7 @@ use alloc::vec::Vec;
 // const GRAVITY: FixedNum<8> = num!(0.5);
 // const UNIT_VECTOR: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)}; // this is NOT the unit vector lmao
 const FRUIT_GENERATION_TIME: i32 = 25;
+static mut FRUIT_GENERATION_MATRICIES: [AffineMatrixInstance; FRUIT_GENERATION_TIME]; 
 const SPRITE_SIZE: i32 = 64;
 const FRUIT_DIAMETERS: [i32; 11] = [9, 11, 15, 18, 22, 29, 32, 39, 42, 53, 64];
 
@@ -337,7 +338,7 @@ pub fn update_all_fruits<'a>(fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, s
         let mut fruit = fruits.remove(0);
         fruit.update();
         fruits.push(fruit);
-    }
+    }    
 }
 
 //This could very easily be a macro, I just don't want to learn macros right now
