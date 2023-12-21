@@ -127,6 +127,7 @@ fn main(mut gba: agb::Gba) -> ! {
         // println!("Update took {}", end_time.wrapping_sub(start_time));
 
         //Commit objects, wait for vblank, update inputs, mixer computer
+        let _ = gen();
         oam.commit();
         vblank.wait_for_vblank();
         input.update();
