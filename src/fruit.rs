@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 // const GRAVITY: FixedNum<8> = num!(0.5);
 // const UNIT_VECTOR: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)}; // this is NOT the unit vector lmao
 const FRUIT_GENERATION_TIME: i32 = 25;
-static mut FRUIT_GENERATION_MATRICIES: [AffineMatrixInstance; FRUIT_GENERATION_TIME]; 
+//static mut FRUIT_GENERATION_MATRICIES: [AffineMatrixInstance; FRUIT_GENERATION_TIME]; 
 const SPRITE_SIZE: i32 = 64;
 const FRUIT_DIAMETERS: [i32; 11] = [9, 11, 15, 18, 22, 29, 32, 39, 42, 53, 64];
 
@@ -263,6 +263,19 @@ fn try_merge_collisions<'a>(collisions: &mut Vec<(usize, usize)>, fruits: &mut V
         pop_fruit(&fruit2_index, fruits);
         
         //Do not add back the collision
+
+        //Remove all collisions containing popped fruit
+        //While this would be more performant if run as a separate loop, we can't wait for all merges to be checked
+        //   because invalid merges may occur.
+        //Not a great solution because the outer for loop doesn't update to account for the removed tuples
+        for _j in 0..collisions.len(){
+            let (check1, check2) = collisions.remove(0);
+            //There's probably a better way to write this:
+            if !(check1 == fruit1_index || check1 == fruit2_index || check2 == fruit1_index || check2 == fruit2_index) {
+                //Neither fruit appeared in the tuple, so the collision is still valid. Push it back.
+                collisions.push((check1,check2));
+            }
+        }
     }
 }
 
@@ -354,4 +367,8 @@ pub fn pow(base: FixedNum<8>, power: i32) -> FixedNum<8>{
     }
     println!("{}^{} = {}", base, power, product);
     return product;
+}
+
+pub fn pregenerate_affine_matricies(){
+
 }
