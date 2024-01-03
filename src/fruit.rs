@@ -9,12 +9,15 @@ use alloc::vec::Vec;
 
 // const GRAVITY: FixedNum<8> = num!(0.5);
 // const UNIT_VECTOR: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)}; // this is NOT the unit vector lmao
-const FRUIT_GENERATION_TIME: i32 = 25;
-//static mut FRUIT_GENERATION_MATRICIES: [AffineMatrixInstance; FRUIT_GENERATION_TIME]; 
+pub const FRUIT_GENERATION_TIME: i32 = 25;
+static mut NEXT_FRUIT_ID: i32 = 0;
+pub struct FruitStaticInfo{
+    pub fruit_affine_matricies: [AffineMatrixInstance; FRUIT_GENERATION_TIME as usize],
+    pub next_fruit_id: i32,
+}
+
 const SPRITE_SIZE: i32 = 64;
 const FRUIT_DIAMETERS: [i32; 11] = [9, 11, 15, 18, 22, 29, 32, 39, 42, 53, 64];
-
-static mut NEXT_FRUIT_ID: i32 = 0;
 const LEFT_WALL: i32 = WIDTH/2;
 const RIGHT_WALL: i32 = WIDTH-32;
 
@@ -31,7 +34,7 @@ pub struct Fruit<'a>{
     popping_frames_remaining: i32,
 }
 
-pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites: &'a [SpriteVram], stage: i32) -> Fruit<'a>{
+pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites: &'a [SpriteVram], stage: i32, fruit_static_info: &mut FruitStaticInfo) -> Fruit<'a>{
     //Create oam object
     let object = oam.object(sprites[stage as usize].clone());
 
@@ -39,22 +42,20 @@ pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites
     //let randvel: Vector2D<FixedNum<8>> = Vector2D { x: (rng::gen()%6 - 3).into(), y: (rng::gen()%6 - 3).into() };
 
     let mut fruit: Fruit;
-    unsafe { //unfortunately necessary for using mutable static NEXT_FRUIT_ID. Would be good to change in the future
-        fruit = Fruit{
-            id: NEXT_FRUIT_ID.clone(),
-            pos: pos.clone(),
-            vel: Vector2D::<FixedNum<8>> {x: num!(0.0), y: num!(0.0)},
-            // vel: randvel,
-            stage: stage,
-            size: FRUIT_DIAMETERS[stage as usize],
-            is_freefall: false,
-            object: object,
-            popping: false,
-            generating_frames_remaining: FRUIT_GENERATION_TIME,
-            popping_frames_remaining: -1,
-        };
-        NEXT_FRUIT_ID += 1;
-    }
+    fruit = Fruit{
+        id: fruit_static_info.next_fruit_id,
+        pos: pos.clone(),
+        vel: Vector2D::<FixedNum<8>> {x: num!(0.0), y: num!(0.0)},
+        // vel: randvel,
+        stage: stage,
+        size: FRUIT_DIAMETERS[stage as usize],
+        is_freefall: false,
+        object: object,
+        popping: false,
+        generating_frames_remaining: FRUIT_GENERATION_TIME,
+        popping_frames_remaining: -1,
+    };
+    fruit_static_info.next_fruit_id+=1;
 
     //Apply initial conditions
     fruit.object.set_position(fruit.pos.trunc());
@@ -68,10 +69,10 @@ impl Fruit<'_>{
         self.is_freefall = true;
     }
 
-    pub fn update(&mut self){
+    pub fn update(&mut self, fruit_static_info: &FruitStaticInfo){
         //Update popping and generating fruit sizes.
         if self.generating_frames_remaining >= 0 || self.popping_frames_remaining >= 0 {
-            self.update_size();
+            self.update_size(fruit_static_info);
             return;
         }
 
@@ -98,14 +99,11 @@ impl Fruit<'_>{
         self.set_sprite_pos();
     }
 
-    fn update_size(&mut self){
+    fn update_size(&mut self, fruit_static_info: &FruitStaticInfo){
         //Scale value is the denominator, e.g. vector(2,2) will scale things by half.
         //For generating fruit, scale should be 0 when frames remaining = 0, and 10 when frames remaining = FRUIT_GENERATION_TIME
         if self.generating_frames_remaining >= 0 {
-            let scale: FixedNum<8> = (num!(1.0) + num!(10.0) * <i32 as Into<FixedNum<8>>>::into(self.generating_frames_remaining)/FRUIT_GENERATION_TIME).into();
-            let matrix = AffineMatrix::from_scale(Vector2D { x: scale, y: scale });
-            let matrix_instance = object::AffineMatrixInstance::new(matrix.to_object_wrapping());
-            self.object.set_affine_matrix(matrix_instance);
+            self.object.set_affine_matrix(fruit_static_info.fruit_affine_matricies[self.popping_frames_remaining as usize].clone());
             self.object.show_affine(object::AffineMode::Affine);
             self.generating_frames_remaining -= 1;
             return;
@@ -114,12 +112,8 @@ impl Fruit<'_>{
         //Should be like generating fruit scale but reversed
         //For popping fruit, scale should be 10 when frames remaining = 0, and 0 when frames remaining = FRUIT_GENERATION_TIME
         if self.popping_frames_remaining >= 0 {
-            let scale: FixedNum<8> = (num!(1.0) + num!(10.0) * <i32 as Into<FixedNum<8>>>::into(FRUIT_GENERATION_TIME - self.popping_frames_remaining)/FRUIT_GENERATION_TIME).into();
-            let matrix = AffineMatrix::from_scale(Vector2D { x: scale, y: scale });
-            let matrix_instance = object::AffineMatrixInstance::new(matrix.to_object_wrapping());
-            self.object.set_affine_matrix(matrix_instance);
+            self.object.set_affine_matrix(fruit_static_info.fruit_affine_matricies[(self.popping_frames_remaining - FRUIT_GENERATION_TIME) as usize].clone());
             self.object.show_affine(object::AffineMode::Affine);
-            println!("Fruit {} has {} popping frames remaining and scale = {}", self.id, self.popping_frames_remaining, scale);
             self.popping_frames_remaining -= 1;
             return;
         }
@@ -237,7 +231,7 @@ fn find_all_fruit_collisions(fruits: &[Fruit]) -> Vec<(usize, usize)>{
     return collisions;
 }
 
-fn try_merge_collisions<'a>(collisions: &mut Vec<(usize, usize)>, fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, sprites: &'a [SpriteVram]){
+fn try_merge_collisions<'a>(collisions: &mut Vec<(usize, usize)>, fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, sprites: &'a [SpriteVram], fruit_static_info: &mut FruitStaticInfo){
     //Each tuple in collisions is (fruit1_index, fruit2_index) experiencing a collision
     for _i in 0..collisions.len(){
         let (fruit1_index, fruit2_index) = collisions.remove(0);
@@ -254,7 +248,7 @@ fn try_merge_collisions<'a>(collisions: &mut Vec<(usize, usize)>, fruits: &mut V
         //Create new fruit inbetween the two
         let new_fruit_pos = (fruit1.pos - fruit1.pos)/2 + fruit1.pos; // this probably isn't right, might need to get physic center and convert back
         //new_fruits.push(create_fruit(new_fruit_pos, oam, sprites, fruit1.stage + 1));
-        let mut new_fruit = create_fruit(new_fruit_pos, oam, sprites, fruit1.stage + 1);
+        let mut new_fruit = create_fruit(new_fruit_pos, oam, sprites, fruit1.stage + 1, fruit_static_info);
         new_fruit.is_freefall = true;
         fruits.push(new_fruit);
 
@@ -341,15 +335,15 @@ fn resolve_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut [Fruit]
     }
 }
 
-pub fn update_all_fruits<'a>(fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, sprites: &'a [SpriteVram]){
+pub fn update_all_fruits<'a>(fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, sprites: &'a [SpriteVram], fruit_static_info: &mut FruitStaticInfo){
     remove_all_popped_fruits(fruits);
     let mut collisions = find_all_fruit_collisions(fruits.as_slice());
-    try_merge_collisions(&mut collisions, fruits, oam, sprites);
+    try_merge_collisions(&mut collisions, fruits, oam, sprites, fruit_static_info);
     resolve_collisions(&mut collisions, fruits);
 
     for _i in 0..fruits.len(){
         let mut fruit = fruits.remove(0);
-        fruit.update();
+        fruit.update(&fruit_static_info);
         fruits.push(fruit);
     }    
 }
@@ -369,6 +363,18 @@ pub fn pow(base: FixedNum<8>, power: i32) -> FixedNum<8>{
     return product;
 }
 
-pub fn pregenerate_affine_matricies(){
+pub fn pregenerate_affine_matricies() -> [AffineMatrixInstance; FRUIT_GENERATION_TIME as usize]{
+    //Initialize array with dummy values
+    let scale: FixedNum<8> = (1).into();
+    let matrix = AffineMatrix::from_scale(Vector2D { x: scale, y: scale });
+    let matrix_instance = object::AffineMatrixInstance::new(matrix.to_object_wrapping());
+    let mut matricies: [AffineMatrixInstance; FRUIT_GENERATION_TIME as usize] = [matrix_instance; FRUIT_GENERATION_TIME as usize];
 
+    for frame_number in 0..FRUIT_GENERATION_TIME as usize {
+        let scale: FixedNum<8> = (num!(1.0) + num!(10.0) * <i32 as Into<FixedNum<8>>>::into(frame_number as i32)/FRUIT_GENERATION_TIME).into();
+        let matrix = AffineMatrix::from_scale(Vector2D { x: scale, y: scale });
+        let matrix_instance = object::AffineMatrixInstance::new(matrix.to_object_wrapping());
+        matricies[frame_number] = matrix_instance;
+    }
+    return matricies;
 }

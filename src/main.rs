@@ -23,7 +23,7 @@ use agb::{
     println,
     include_font
 };
-use fruit::{create_fruit, Fruit, update_all_fruits};
+use fruit::{create_fruit, Fruit, update_all_fruits, FruitStaticInfo};
 use player::create_player;
 use alloc::vec::Vec;
 use sounds::start_bgm;
@@ -64,11 +64,14 @@ fn main(mut gba: agb::Gba) -> ! {
         gup_sprites.push(oam.sprite(sprite));
     }
 
+    //Create fruit static/global info struct
+    let mut fruit_static_info = FruitStaticInfo{next_fruit_id: 0, fruit_affine_matricies: crate::fruit::pregenerate_affine_matricies()};
+
     //Create fruit object storage
     let mut fruit_objects: Vec<fruit::Fruit> = Vec::new();
     //Bootstrap fruit engine lol
     let initial_pos: Vector2D<FixedNum<8>> = Vector2D::new(num!(50.0), num!(50.0));
-    let mut held_fruit: Fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), (gen()%4).abs());
+    let mut held_fruit: Fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), (gen()%4).abs(), &mut fruit_static_info);
 
     //Create player/gup
     let mut player = create_player(gup_sprites.as_slice(), &oam);
@@ -114,13 +117,13 @@ fn main(mut gba: agb::Gba) -> ! {
             //Fruit was just dropped, create new fruit
             let initial_pos = player.get_hold_vector();
             //held_fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), (fruit_objects.len() as i32)%11);
-            held_fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), (gen()%4).abs());
+            held_fruit = create_fruit(initial_pos, &oam, fruit_sprites.as_slice(), (gen()%4).abs(), &mut fruit_static_info);
             held_fruit.object.show();
         }
 
         //update all fruits
-        update_all_fruits(&mut fruit_objects, &oam, fruit_sprites.as_slice());
-        held_fruit.update();
+        update_all_fruits(&mut fruit_objects, &oam, fruit_sprites.as_slice(), &mut fruit_static_info);
+        held_fruit.update(&fruit_static_info);
 
         //Collect timer and print
         // let end_time = timer.value();
