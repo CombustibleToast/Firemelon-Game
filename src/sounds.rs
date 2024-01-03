@@ -9,25 +9,27 @@ use agb::{
 
 //const CHASER: &[u8] = include_wav!("sounds/music/CHASER.wav");
 // const KATAMARI: &[u8] = include_wav!("sounds/music/KATAMARI.wav");
-const BGM: [&[u8]; 0] = [];
-// const BGM: [&[u8]; 6] = [
-//     include_wav!("sounds/music/KATAMARI.wav"),
-//     include_wav!("sounds/music/ACT RIGHT.wav"),
-//     include_wav!("sounds/music/GIRL HELL 1999.wav"),
-//     include_wav!("sounds/music/MURDER EVERY 1 U KNOW!.wav"),
-//     include_wav!("sounds/music/P3T.wav"),
-//     include_wav!("sounds/music/PUSH UR T3MPRR.wav")
-// ];
+// const BGM: [&[u8]; 0] = [];
+const BGM: [&[u8]; 6] = [
+    include_wav!("sounds/music/KATAMARI.wav"),
+    include_wav!("sounds/music/ACT RIGHT.wav"),
+    include_wav!("sounds/music/GIRL HELL 1999.wav"),
+    include_wav!("sounds/music/MURDER EVERY 1 U KNOW!.wav"),
+    include_wav!("sounds/music/P3T.wav"),
+    include_wav!("sounds/music/PUSH UR T3MPRR.wav")
+];
 
 pub struct SoundPlayer<'a>{
     mixer: Mixer<'a>,
-    current_playing_channel: Option<ChannelId>
+    current_playing_channel: Option<ChannelId>,
+    is_muted: bool
 }
 
 pub fn start_bgm(mixer: Mixer) -> SoundPlayer {
     let mut player = SoundPlayer{
         mixer: mixer,
-        current_playing_channel: None
+        current_playing_channel: None,
+        is_muted: false
     };
     player.mixer.enable();
     return player;
@@ -59,5 +61,24 @@ impl SoundPlayer<'_>{
         let mut new_channel =  SoundChannel::new_high_priority(BGM[random_index]);
         new_channel.playback(num!(2.05));
         self.current_playing_channel = self.mixer.play_sound(new_channel);
+    }
+
+    pub fn mute(&mut self){
+        
+        match &self.current_playing_channel {
+            None => println!("UNABLE TO MUTE CHANNEL; OPTION WAS NONE"),
+            Some(id) => {
+                match self.is_muted{
+                    true => {
+                        self.mixer.channel(id).unwrap().volume(1);
+                        self.is_muted = false;
+                    },
+                    false => {
+                        self.mixer.channel(id).unwrap().volume(0);
+                        self.is_muted = true;
+                    },
+                }
+            }
+        }
     }
 }

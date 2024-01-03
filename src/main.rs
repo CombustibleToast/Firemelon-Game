@@ -101,6 +101,9 @@ fn main(mut gba: agb::Gba) -> ! {
         if input.is_just_pressed(Button::B) {
             sounds.play_random_song();
         }
+        if input.is_just_pressed(Button::SELECT) {
+            sounds.mute();
+        }
 
         //Update player sprite
         player.update_animation();
