@@ -1,3 +1,5 @@
+use core::array::from_fn;
+
 use agb::{
     display::object::{Object, SpriteVram, OamManaged, self, AffineMatrixInstance},
     display::affine::AffineMatrix,
@@ -52,10 +54,11 @@ pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites
         is_freefall: false,
         object: object,
         popping: false,
-        generating_frames_remaining: FRUIT_GENERATION_TIME,
+        generating_frames_remaining: FRUIT_GENERATION_TIME - 1,
         popping_frames_remaining: -1,
     };
     fruit_static_info.next_fruit_id+=1;
+    println!("New fruit id {} generatingf {} popf {}", fruit.id, fruit.generating_frames_remaining, fruit.popping_frames_remaining);
 
     //Apply initial conditions
     fruit.object.set_position(fruit.pos.trunc());
@@ -74,6 +77,11 @@ impl Fruit<'_>{
         if self.generating_frames_remaining >= 0 || self.popping_frames_remaining >= 0 {
             self.update_size(fruit_static_info);
             return;
+        }
+        else {
+            //Turn off affine mode if unnecessary
+            self.object.show(); //Show sprite in normal mode
+            println!("ID {} in normal mode", self.id);
         }
 
         //Don't process non-phsyic'd fruits
@@ -103,8 +111,9 @@ impl Fruit<'_>{
         //Scale value is the denominator, e.g. vector(2,2) will scale things by half.
         //For generating fruit, scale should be 0 when frames remaining = 0, and 10 when frames remaining = FRUIT_GENERATION_TIME
         if self.generating_frames_remaining >= 0 {
-            self.object.set_affine_matrix(fruit_static_info.fruit_affine_matricies[self.popping_frames_remaining as usize].clone());
+            self.object.set_affine_matrix(fruit_static_info.fruit_affine_matricies[self.generating_frames_remaining as usize].clone()); //4294967295
             self.object.show_affine(object::AffineMode::Affine);
+            println!("ID {} in affine mode", self.id);
             self.generating_frames_remaining -= 1;
             return;
         }
@@ -112,8 +121,10 @@ impl Fruit<'_>{
         //Should be like generating fruit scale but reversed
         //For popping fruit, scale should be 10 when frames remaining = 0, and 0 when frames remaining = FRUIT_GENERATION_TIME
         if self.popping_frames_remaining >= 0 {
-            self.object.set_affine_matrix(fruit_static_info.fruit_affine_matricies[(self.popping_frames_remaining - FRUIT_GENERATION_TIME) as usize].clone());
+            println!("Id {} Popping frames remaining {}", self.id, self.popping_frames_remaining);
+            self.object.set_affine_matrix(fruit_static_info.fruit_affine_matricies[(FRUIT_GENERATION_TIME - self.popping_frames_remaining) as usize].clone());
             self.object.show_affine(object::AffineMode::Affine);
+            println!("ID {} in affine mode", self.id);
             self.popping_frames_remaining -= 1;
             return;
         }
@@ -234,6 +245,11 @@ fn find_all_fruit_collisions(fruits: &[Fruit]) -> Vec<(usize, usize)>{
 fn try_merge_collisions<'a>(collisions: &mut Vec<(usize, usize)>, fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, sprites: &'a [SpriteVram], fruit_static_info: &mut FruitStaticInfo){
     //Each tuple in collisions is (fruit1_index, fruit2_index) experiencing a collision
     for _i in 0..collisions.len(){
+        //Guard clause, if there are no collisions in the vec, break out of this loop lest we crash
+        if collisions.len() == 0 {
+            return;
+        }
+
         let (fruit1_index, fruit2_index) = collisions.remove(0);
         let fruit1 = fruits.get(fruit1_index).unwrap();
         let fruit2 = fruits.get(fruit2_index).unwrap();
@@ -283,7 +299,7 @@ fn pop_fruit(index: &usize, fruits: &mut Vec<Fruit>){
 
     //start animation
     fruit.generating_frames_remaining = -1; //truncate generation animation in case it immediately merges into a new fruit; popping takes prio
-    fruit.popping_frames_remaining = FRUIT_GENERATION_TIME;
+    fruit.popping_frames_remaining = FRUIT_GENERATION_TIME - 1;
 }
 
 fn resolve_collisions(collisions: &mut Vec<(usize, usize)>, fruits: &mut [Fruit]){
@@ -364,17 +380,25 @@ pub fn pow(base: FixedNum<8>, power: i32) -> FixedNum<8>{
 }
 
 pub fn pregenerate_affine_matricies() -> [AffineMatrixInstance; FRUIT_GENERATION_TIME as usize]{
-    //Initialize array with dummy values
-    let scale: FixedNum<8> = (1).into();
-    let matrix = AffineMatrix::from_scale(Vector2D { x: scale, y: scale });
-    let matrix_instance = object::AffineMatrixInstance::new(matrix.to_object_wrapping());
-    let mut matricies: [AffineMatrixInstance; FRUIT_GENERATION_TIME as usize] = [matrix_instance; FRUIT_GENERATION_TIME as usize];
-
-    for frame_number in 0..FRUIT_GENERATION_TIME as usize {
-        let scale: FixedNum<8> = (num!(1.0) + num!(10.0) * <i32 as Into<FixedNum<8>>>::into(frame_number as i32)/FRUIT_GENERATION_TIME).into();
+    fn generate_matrix(i: usize) -> AffineMatrixInstance{
+        let scale: FixedNum<8> = (num!(1.0) + num!(10.0) * <i32 as Into<FixedNum<8>>>::into(i as i32)/FRUIT_GENERATION_TIME).into();
         let matrix = AffineMatrix::from_scale(Vector2D { x: scale, y: scale });
-        let matrix_instance = object::AffineMatrixInstance::new(matrix.to_object_wrapping());
-        matricies[frame_number] = matrix_instance;
+        return object::AffineMatrixInstance::new(matrix.to_object_wrapping());
     }
-    return matricies;
+
+    from_fn(generate_matrix)
+
+    //Initialize array with dummy values
+    // let scale: FixedNum<8> = (1).into();
+    // let matrix = AffineMatrix::from_scale(Vector2D { x: scale, y: scale });
+    // let matrix_instance = object::AffineMatrixInstance::new(matrix.to_object_wrapping());
+    // let mut matricies: [AffineMatrixInstance; FRUIT_GENERATION_TIME as usize] = [matrix_instance; FRUIT_GENERATION_TIME as usize];
+
+    // for frame_number in 0..FRUIT_GENERATION_TIME as usize {
+    //     let scale: FixedNum<8> = (num!(1.0) + num!(10.0) * <i32 as Into<FixedNum<8>>>::into(frame_number as i32)/FRUIT_GENERATION_TIME).into();
+    //     let matrix = AffineMatrix::from_scale(Vector2D { x: scale, y: scale });
+    //     let matrix_instance = object::AffineMatrixInstance::new(matrix.to_object_wrapping());
+    //     matricies[frame_number] = matrix_instance;
+    // }
+    // return matricies;
 }
