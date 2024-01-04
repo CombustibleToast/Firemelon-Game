@@ -25,6 +25,7 @@ use agb::{
 use fruit::{create_fruit, Fruit, update_all_fruits, FruitStaticInfo, pregenerate_affine_matricies};
 use player::create_player;
 use alloc::vec::Vec;
+use score_writer::{Writer, create_writer};
 use sounds::start_bgm;
 
 const FRUIT_SPRITESHEET: &Graphics = include_aseprite!("graphics/Fruits.ase");
@@ -33,12 +34,10 @@ const FRUIT_SPRITELIST: &[Sprite] = FRUIT_SPRITESHEET.sprites();
 const GUP_SPRITESHEET: &Graphics = include_aseprite!("graphics/gup.ase");
 const GUP_SPRITELIST: &[Sprite] = GUP_SPRITESHEET.sprites();
 
-// const FONT: Font = include_font!("graphics/BrunoAce-Regular.ttf", 12); //12?
-// const PALETTE: [u16; 16] = [0x0, 0xFF_FF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,];
-
 mod fruit;
 mod player;
 mod sounds;
+mod score_writer;
 
 // The main function must take 1 arguments and never return. The agb::entry decorator
 // ensures that everything is in order. `agb` will call this after setting up the stack
@@ -47,6 +46,7 @@ mod sounds;
 fn main(mut gba: agb::Gba) -> ! {
     //Get OAM, VBlank, and inputs
     let oam = gba.display.object.get_managed();
+    // let (mut unmanaged, _) = gba.display.object.get_unmanaged();
     let vblank = agb::interrupt::VBlank::get();
     let mut input = agb::input::ButtonController::new();
 
@@ -67,7 +67,8 @@ fn main(mut gba: agb::Gba) -> ! {
     let mut fruit_static_info = FruitStaticInfo{
         next_fruit_id: 0, 
         fruit_affine_matricies: pregenerate_affine_matricies(),
-        current_score: 0
+        current_score: 0,
+        previous_score: -1
     };
 
     //Create fruit object storage
@@ -81,6 +82,9 @@ fn main(mut gba: agb::Gba) -> ! {
 
     //Create music stuff
     let mut sounds = start_bgm(gba.mixer.mixer(Frequency::Hz10512));
+
+    //Create score writer
+    let mut score_writer = create_writer();
 
     //Create performance timer
     // let mut timer = gba.timers.timers().timer2;
@@ -131,8 +135,13 @@ fn main(mut gba: agb::Gba) -> ! {
         update_all_fruits(&mut fruit_objects, &oam, fruit_sprites.as_slice(), &mut fruit_static_info);
         held_fruit.update(&fruit_static_info);
 
-        //Get current score
-        println!("Score: {}", fruit_static_info.current_score);
+        //Write new score
+        if(fruit_static_info.current_score != fruit_static_info.previous_score){
+            println!("Score: {}", fruit_static_info.current_score);
+            // let unmanaged_iter = &mut unmanaged.iter();
+            score_writer.write_new_score(&fruit_static_info.current_score, gba.display.object.get_unmanaged().unwrap().iter());
+        }
+
 
         //Collect timer and print
         // let end_time = timer.value();

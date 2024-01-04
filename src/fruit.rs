@@ -15,7 +15,8 @@ pub const FRUIT_GENERATION_TIME: i32 = 25;
 pub struct FruitStaticInfo{
     pub fruit_affine_matricies: [AffineMatrixInstance; FRUIT_GENERATION_TIME as usize],
     pub next_fruit_id: i32,
-    pub current_score: i32
+    pub current_score: i32,
+    pub previous_score: i32,
 }
 
 const SPRITE_SIZE: i32 = 64;
@@ -354,6 +355,7 @@ pub fn update_all_fruits<'a>(fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, s
     try_merge_collisions(&mut collisions, fruits, oam, sprites, fruit_static_info);
     resolve_collisions(&mut collisions, fruits);
 
+    fruit_static_info.previous_score = fruit_static_info.current_score;
     fruit_static_info.current_score = 0; //recalculate score
     for _i in 0..fruits.len(){
         let mut fruit = fruits.remove(0);
