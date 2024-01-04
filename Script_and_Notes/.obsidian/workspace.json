@@ -105,7 +105,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Script.md",
+                "file": "Log.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -122,7 +122,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Script.md",
+                "file": "Log.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -145,7 +145,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Script.md"
+                "file": "Log.md"
               }
             }
           }
@@ -166,10 +166,10 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "baa77203649e350f",
+  "active": "639c146432a0e0bd",
   "lastOpenFiles": [
-    "Log.md",
     "Script.md",
+    "Log.md",
     "Attachments/Pasted image 20231121205507.png",
     "Attachments/Pasted image 20231121191519.png",
     "Attachments"

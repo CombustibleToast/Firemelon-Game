@@ -163,3 +163,13 @@ Removed text stuff because I have no idea what I'm doing and started adding funn
 12/4
 master a596a70 - affine stuff now working and looks pretty good
 There's still a problem with the affine stuff that when there are too many fruits on screen some of the fruit half disappear. In the future, consider either or both un-setting affine mode when the animation is done and/or pre-calculating all necessary affine matricies as AffineMatrix objects, then fruits can create an instance from them as needed and apply it to themselves. Also, because of this I don't think showing rotation will be possible because the gba only allows for so many affine matricies to be stored in vram. 
+
+# 18
+1/2
+master 035a5ef - Moved unsafe static mut fruit ID to "static" struct
+master 6550c7c - Precalculated affine matricies for optimization and reduced number of affine sprites in use to reduce "censor barring"
+master 29b8a49 - Made music mute-able by pressing select
+
+# 19
+1/3
+master 4a24afd - Implemented score counting. Each fruit is worth its stage plus the worth of the previous stage * 2. Not how actual suika does it but i can't figure that out
