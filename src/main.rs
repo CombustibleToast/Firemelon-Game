@@ -16,7 +16,7 @@
 extern crate alloc;
 
 use agb::{
-    display::object::{SpriteVram, Graphics, include_aseprite, Sprite},
+    display::object::{SpriteVram, Graphics, include_aseprite, Sprite, OamUnmanaged, SpriteLoader},
     fixnum::{FixedNum, Vector2D, num}, input::Button,
     rng::gen, 
     sound::mixer::Frequency, println,
@@ -46,7 +46,6 @@ mod score_writer;
 fn main(mut gba: agb::Gba) -> ! {
     //Get OAM, VBlank, and inputs
     let oam = gba.display.object.get_managed();
-    // let (mut unmanaged, _) = gba.display.object.get_unmanaged();
     let vblank = agb::interrupt::VBlank::get();
     let mut input = agb::input::ButtonController::new();
 
@@ -84,7 +83,7 @@ fn main(mut gba: agb::Gba) -> ! {
     let mut sounds = start_bgm(gba.mixer.mixer(Frequency::Hz10512));
 
     //Create score writer
-    let mut score_writer = create_writer();
+    let mut score_writer = create_writer(Vector2D{x:0, y:0}, &oam);
 
     //Create performance timer
     // let mut timer = gba.timers.timers().timer2;
@@ -136,10 +135,9 @@ fn main(mut gba: agb::Gba) -> ! {
         held_fruit.update(&fruit_static_info);
 
         //Write new score
-        if(fruit_static_info.current_score != fruit_static_info.previous_score){
+        if fruit_static_info.current_score != fruit_static_info.previous_score {
             println!("Score: {}", fruit_static_info.current_score);
-            // let unmanaged_iter = &mut unmanaged.iter();
-            score_writer.write_new_score(&fruit_static_info.current_score, gba.display.object.get_unmanaged().unwrap().iter());
+            score_writer.write_new_score(&fruit_static_info.current_score);
         }
 
 
