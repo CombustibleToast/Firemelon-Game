@@ -16,12 +16,11 @@
 extern crate alloc;
 
 use agb::{
-    display::{object::{SpriteVram, Graphics, include_aseprite, Sprite, PaletteVram, ObjectTextRender, Size, TextAlignment}, Font, palette16::Palette16},
+    display::object::{SpriteVram, Graphics, include_aseprite, Sprite},
     fixnum::{FixedNum, Vector2D, num}, input::Button,
     rng::gen, 
-    sound::mixer::{SoundChannel, Frequency},
-    println,
-    include_font
+    sound::mixer::Frequency,
+    // include_font
 };
 use fruit::{create_fruit, Fruit, update_all_fruits, FruitStaticInfo};
 use player::create_player;
@@ -34,8 +33,8 @@ const FRUIT_SPRITELIST: &[Sprite] = FRUIT_SPRITESHEET.sprites();
 const GUP_SPRITESHEET: &Graphics = include_aseprite!("graphics/gup.ase");
 const GUP_SPRITELIST: &[Sprite] = GUP_SPRITESHEET.sprites();
 
-const FONT: Font = include_font!("graphics/BrunoAce-Regular.ttf", 12); //12?
-const PALETTE: [u16; 16] = [0x0, 0xFF_FF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,];
+// const FONT: Font = include_font!("graphics/BrunoAce-Regular.ttf", 12); //12?
+// const PALETTE: [u16; 16] = [0x0, 0xFF_FF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,];
 
 mod fruit;
 mod player;

@@ -12,7 +12,6 @@ use alloc::vec::Vec;
 // const GRAVITY: FixedNum<8> = num!(0.5);
 // const UNIT_VECTOR: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)}; // this is NOT the unit vector lmao
 pub const FRUIT_GENERATION_TIME: i32 = 25;
-static mut NEXT_FRUIT_ID: i32 = 0;
 pub struct FruitStaticInfo{
     pub fruit_affine_matricies: [AffineMatrixInstance; FRUIT_GENERATION_TIME as usize],
     pub next_fruit_id: i32,
@@ -370,14 +369,14 @@ pub fn dot_product(v1: &Vector2D<FixedNum<8>>, v2: &Vector2D<FixedNum<8>>) -> Fi
 }
 
 //There's definitely a faster algorithm for this
-pub fn pow(base: FixedNum<8>, power: i32) -> FixedNum<8>{
-    let mut product = base.clone();
-    for _i in 1..power{
-        product *= base;
-    }
-    println!("{}^{} = {}", base, power, product);
-    return product;
-}
+// pub fn pow(base: FixedNum<8>, power: i32) -> FixedNum<8>{
+//     let mut product = base.clone();
+//     for _i in 1..power{
+//         product *= base;
+//     }
+//     println!("{}^{} = {}", base, power, product);
+//     return product;
+// }
 
 pub fn pregenerate_affine_matricies() -> [AffineMatrixInstance; FRUIT_GENERATION_TIME as usize]{
     fn generate_matrix(i: usize) -> AffineMatrixInstance{
