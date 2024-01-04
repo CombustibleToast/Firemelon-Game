@@ -15,10 +15,13 @@ pub const FRUIT_GENERATION_TIME: i32 = 25;
 pub struct FruitStaticInfo{
     pub fruit_affine_matricies: [AffineMatrixInstance; FRUIT_GENERATION_TIME as usize],
     pub next_fruit_id: i32,
+    pub current_score: i32
 }
 
 const SPRITE_SIZE: i32 = 64;
 const FRUIT_DIAMETERS: [i32; 11] = [9, 11, 15, 18, 22, 29, 32, 39, 42, 53, 64];
+// const FRUIT_VALUES: [i32; 11] = [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66]; //Idk if this is right, taken from https://gaming.stackexchange.com/questions/405265/how-does-scoring-work-in-suika-game
+const FRUIT_VALUES: [i32; 11] = [1, 4, 11, 26, 57, 120, 247, 502, 1013, 2036, 4083];
 const LEFT_WALL: i32 = WIDTH/2;
 const RIGHT_WALL: i32 = WIDTH-32;
 
@@ -57,7 +60,6 @@ pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites
         popping_frames_remaining: -1,
     };
     fruit_static_info.next_fruit_id+=1;
-    println!("New fruit id {} generatingf {} popf {}", fruit.id, fruit.generating_frames_remaining, fruit.popping_frames_remaining);
 
     //Apply initial conditions
     fruit.object.set_position(fruit.pos.trunc());
@@ -79,8 +81,7 @@ impl Fruit<'_>{
         }
         else {
             //Turn off affine mode if unnecessary
-            self.object.show(); //Show sprite in normal mode
-            println!("ID {} in normal mode", self.id);
+            self.object.show();
         }
 
         //Don't process non-phsyic'd fruits
@@ -112,7 +113,6 @@ impl Fruit<'_>{
         if self.generating_frames_remaining >= 0 {
             self.object.set_affine_matrix(fruit_static_info.fruit_affine_matricies[self.generating_frames_remaining as usize].clone()); //4294967295
             self.object.show_affine(object::AffineMode::Affine);
-            println!("ID {} in affine mode", self.id);
             self.generating_frames_remaining -= 1;
             return;
         }
@@ -120,10 +120,8 @@ impl Fruit<'_>{
         //Should be like generating fruit scale but reversed
         //For popping fruit, scale should be 10 when frames remaining = 0, and 0 when frames remaining = FRUIT_GENERATION_TIME
         if self.popping_frames_remaining >= 0 {
-            println!("Id {} Popping frames remaining {}", self.id, self.popping_frames_remaining);
             self.object.set_affine_matrix(fruit_static_info.fruit_affine_matricies[(FRUIT_GENERATION_TIME - self.popping_frames_remaining) as usize].clone());
             self.object.show_affine(object::AffineMode::Affine);
-            println!("ID {} in affine mode", self.id);
             self.popping_frames_remaining -= 1;
             return;
         }
@@ -356,9 +354,13 @@ pub fn update_all_fruits<'a>(fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, s
     try_merge_collisions(&mut collisions, fruits, oam, sprites, fruit_static_info);
     resolve_collisions(&mut collisions, fruits);
 
+    fruit_static_info.current_score = 0; //recalculate score
     for _i in 0..fruits.len(){
         let mut fruit = fruits.remove(0);
         fruit.update(&fruit_static_info);
+        if !fruit.popping {
+            fruit_static_info.current_score += FRUIT_VALUES[fruit.stage as usize];
+        }
         fruits.push(fruit);
     }    
 }

@@ -19,10 +19,10 @@ use agb::{
     display::object::{SpriteVram, Graphics, include_aseprite, Sprite},
     fixnum::{FixedNum, Vector2D, num}, input::Button,
     rng::gen, 
-    sound::mixer::Frequency,
+    sound::mixer::Frequency, println,
     // include_font
 };
-use fruit::{create_fruit, Fruit, update_all_fruits, FruitStaticInfo};
+use fruit::{create_fruit, Fruit, update_all_fruits, FruitStaticInfo, pregenerate_affine_matricies};
 use player::create_player;
 use alloc::vec::Vec;
 use sounds::start_bgm;
@@ -64,7 +64,11 @@ fn main(mut gba: agb::Gba) -> ! {
     }
 
     //Create fruit static/global info struct
-    let mut fruit_static_info = FruitStaticInfo{next_fruit_id: 0, fruit_affine_matricies: crate::fruit::pregenerate_affine_matricies()};
+    let mut fruit_static_info = FruitStaticInfo{
+        next_fruit_id: 0, 
+        fruit_affine_matricies: pregenerate_affine_matricies(),
+        current_score: 0
+    };
 
     //Create fruit object storage
     let mut fruit_objects: Vec<fruit::Fruit> = Vec::new();
@@ -127,6 +131,9 @@ fn main(mut gba: agb::Gba) -> ! {
         update_all_fruits(&mut fruit_objects, &oam, fruit_sprites.as_slice(), &mut fruit_static_info);
         held_fruit.update(&fruit_static_info);
 
+        //Get current score
+        println!("Score: {}", fruit_static_info.current_score);
+
         //Collect timer and print
         // let end_time = timer.value();
         // println!("Update took {}", end_time.wrapping_sub(start_time));
@@ -134,8 +141,8 @@ fn main(mut gba: agb::Gba) -> ! {
         //Commit objects, wait for vblank, update inputs, mixer computer
         let _ = gen();
         oam.commit();
-        vblank.wait_for_vblank();
         input.update();
         sounds.frame();
+        vblank.wait_for_vblank();
     }
 }
