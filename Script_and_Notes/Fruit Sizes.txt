@@ -11,3 +11,13 @@ peach : 95	62%	39
 pineap: 103	67%	42
 cantel: 127	83%	53
 waterm: 152	100%	64
+
+Calculating container size:
+suika watermelon: 260 px
+suika container: 447 px
+ratio: container is 171.9% of watermelon
+firemelon is 64px, firemelon container should be 110.06 px
+
+For container drawing:
+max x is width - 32 = 208
+min x is max x - container width = 98

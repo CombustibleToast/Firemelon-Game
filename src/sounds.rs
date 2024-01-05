@@ -1,23 +1,20 @@
 use agb::{
     include_wav,
     rng::gen, 
-    sound::mixer::{SoundChannel, Frequency, Mixer, MixerController, ChannelId}, 
+    sound::mixer::{SoundChannel, Mixer, ChannelId}, 
      println,
     fixnum::num,
 };
 
-
-//const CHASER: &[u8] = include_wav!("sounds/music/CHASER.wav");
-// const KATAMARI: &[u8] = include_wav!("sounds/music/KATAMARI.wav");
-// const BGM: [&[u8]; 0] = [];
-const BGM: [&[u8]; 6] = [
-    include_wav!("sounds/music/KATAMARI.wav"),
-    include_wav!("sounds/music/ACT RIGHT.wav"),
-    include_wav!("sounds/music/GIRL HELL 1999.wav"),
-    include_wav!("sounds/music/MURDER EVERY 1 U KNOW!.wav"),
-    include_wav!("sounds/music/P3T.wav"),
-    include_wav!("sounds/music/PUSH UR T3MPRR.wav")
-];
+const BGM: [&[u8]; 0] = [];
+// const BGM: [&[u8]; 6] = [
+//     include_wav!("sounds/music/KATAMARI.wav"),
+//     include_wav!("sounds/music/ACT RIGHT.wav"),
+//     include_wav!("sounds/music/GIRL HELL 1999.wav"),
+//     include_wav!("sounds/music/MURDER EVERY 1 U KNOW!.wav"),
+//     include_wav!("sounds/music/P3T.wav"),
+//     include_wav!("sounds/music/PUSH UR T3MPRR.wav")
+// ];
 
 pub struct SoundPlayer<'a>{
     mixer: Mixer<'a>,

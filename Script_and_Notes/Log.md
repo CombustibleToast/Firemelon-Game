@@ -173,3 +173,10 @@ master 29b8a49 - Made music mute-able by pressing select
 # 19
 1/3
 master 4a24afd - Implemented score counting. Each fruit is worth its stage plus the worth of the previous stage * 2. Not how actual suika does it but i can't figure that out
+
+# 20
+1/4
+master c55f547 - Score readout done using sprites. Abandoned previous attempt using text renderer
+master d5864c5 - Implemented background !!! And fruits can no longer be spam-dropped
+master b17209f - Finalized container size and location. Confined fruit and player to that container. Now I just need to draw the background to reflect the container
+master 4e2c91d - tuned player's movement to better fall in line with background graphic
