@@ -16,10 +16,10 @@
 extern crate alloc;
 
 use agb::{
-    display::object::{SpriteVram, Graphics, include_aseprite, Sprite, OamUnmanaged, SpriteLoader},
+    display::{object::{SpriteVram, Graphics, include_aseprite, Sprite, OamUnmanaged, SpriteLoader}, window, tiled::{RegularBackgroundSize, TileFormat, TiledMap}},
     fixnum::{FixedNum, Vector2D, num}, input::Button,
     rng::gen, 
-    sound::mixer::Frequency, println,
+    sound::mixer::Frequency, println, include_background_gfx,
     // include_font
 };
 use fruit::{create_fruit, Fruit, update_all_fruits, FruitStaticInfo, pregenerate_affine_matricies};
@@ -34,20 +34,38 @@ const FRUIT_SPRITELIST: &[Sprite] = FRUIT_SPRITESHEET.sprites();
 const GUP_SPRITESHEET: &Graphics = include_aseprite!("graphics/gup.ase");
 const GUP_SPRITELIST: &[Sprite] = GUP_SPRITESHEET.sprites();
 
+include_background_gfx!(background_sprite, tiles_source => "graphics/Background.aseprite");
+
 mod fruit;
 mod player;
 mod sounds;
 mod score_writer;
+mod test;
 
 // The main function must take 1 arguments and never return. The agb::entry decorator
 // ensures that everything is in order. `agb` will call this after setting up the stack
 // and interrupt handlers correctly. It will also handle creating the `Gba` struct for you.
 #[agb::entry]
 fn main(mut gba: agb::Gba) -> ! {
+    // crate::test::window(gba);
+
     //Get OAM, VBlank, and inputs
     let oam = gba.display.object.get_managed();
+    let (gfx, mut vram) = gba.display.video.tiled0();
     let vblank = agb::interrupt::VBlank::get();
     let mut input = agb::input::ButtonController::new();
+
+    //Set up background
+    let background_tileset = background_sprite::tiles_source.tiles;
+    vram.set_background_palettes(background_sprite::PALETTES);
+    let mut background_map = gfx.background(
+        agb::display::Priority::P0,
+        RegularBackgroundSize::Background32x32,
+        background_tileset.format(),
+    );
+    background_map.fill_with(&mut vram, &background_sprite::tiles_source);
+    background_map.commit(&mut vram);
+    background_map.show();
 
     //Load Fruit sprites
     //let fruit_sprites: [SpriteVram; FRUIT_SPRITELIST.len()] = [oam.sprite(&FRUIT_SPRITELIST[i]); FRUIT_SPRITELIST.len()];
@@ -118,9 +136,8 @@ fn main(mut gba: agb::Gba) -> ! {
         held_fruit.pos = player.get_hold_vector();
         held_fruit.set_sprite_pos();
         
-        if input.is_just_pressed(Button::A){
+        if input.is_just_pressed(Button::A) && held_fruit.drop() {
             //Drop Fruit and move it to the vec
-            held_fruit.drop();
             fruit_objects.push(held_fruit);
 
             //Fruit was just dropped, create new fruit
@@ -153,3 +170,4 @@ fn main(mut gba: agb::Gba) -> ! {
         vblank.wait_for_vblank();
     }
 }
+

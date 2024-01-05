@@ -70,8 +70,12 @@ pub fn create_fruit<'a>(pos: Vector2D<FixedNum<8>>, oam: &'a OamManaged, sprites
 }
 
 impl Fruit<'_>{
-    pub fn drop(&mut self){
+    pub fn drop(&mut self) -> bool{
+        if self.generating_frames_remaining > 0 {
+            return false;
+        }
         self.is_freefall = true;
+        true
     }
 
     pub fn update(&mut self, fruit_static_info: &FruitStaticInfo){
