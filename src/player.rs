@@ -6,8 +6,8 @@ use agb::{
 use crate::fruit;
 
 const WALK_SPEED: i32 = 2;
-pub const X_MAX: i32 = WIDTH - 32;
-pub const X_MIN: i32 = X_MAX - fruit::CONTAINER_WIDTH;
+pub const X_MAX: i32 = 209; //based on container background 
+pub const X_MIN: i32 = 109; 
 const WALK_SEQUENCE: [usize; 4] = [0,1,0,2];
 
 
@@ -46,7 +46,7 @@ pub fn create_player<'a>(sprites: &'a [SpriteVram], oam: &'a OamManaged) -> Play
 
 impl Player<'_>{
     pub fn get_hold_vector(&self) -> Vector2D<FixedNum<8>> {
-        return self.pos - Vector2D { x: num!(32.0), y: num!(8.0) };
+        return self.pos - Vector2D { x: num!(27.0), y: num!(8.0) };
     }
 
     pub fn walk_left(&mut self) {
