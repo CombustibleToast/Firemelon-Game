@@ -3,10 +3,11 @@ use agb::{
     display::WIDTH,
     fixnum::{num, FixedNum, Vector2D},
 };
+use crate::fruit;
 
 const WALK_SPEED: i32 = 2;
-const X_MIN: i32 = WIDTH/2;
-const X_MAX: i32 = WIDTH - 32;
+pub const X_MAX: i32 = WIDTH - 32;
+pub const X_MIN: i32 = X_MAX - fruit::CONTAINER_WIDTH;
 const WALK_SEQUENCE: [usize; 4] = [0,1,0,2];
 
 

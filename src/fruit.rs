@@ -8,6 +8,7 @@ use agb::{
     syscall::sqrt
 };
 use alloc::vec::Vec;
+use crate::player;
 
 // const GRAVITY: FixedNum<8> = num!(0.5);
 // const UNIT_VECTOR: Vector2D<FixedNum<8>> = Vector2D {x: num!(1.0), y: num!(1.0)}; // this is NOT the unit vector lmao
@@ -23,8 +24,9 @@ const SPRITE_SIZE: i32 = 64;
 const FRUIT_DIAMETERS: [i32; 11] = [9, 11, 15, 18, 22, 29, 32, 39, 42, 53, 64];
 // const FRUIT_VALUES: [i32; 11] = [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66]; //Idk if this is right, taken from https://gaming.stackexchange.com/questions/405265/how-does-scoring-work-in-suika-game
 const FRUIT_VALUES: [i32; 11] = [1, 4, 11, 26, 57, 120, 247, 502, 1013, 2036, 4083];
-const LEFT_WALL: i32 = WIDTH/2;
-const RIGHT_WALL: i32 = WIDTH-32;
+pub const CONTAINER_WIDTH: i32 = 110;
+const RIGHT_WALL: i32 = player::X_MAX; //spaghetti
+const LEFT_WALL: i32 = RIGHT_WALL - CONTAINER_WIDTH;
 
 pub struct Fruit<'a>{
     id: i32,
