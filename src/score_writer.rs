@@ -5,8 +5,8 @@ use agb::{
     println, include_aseprite, fixnum::{Vector2D, FixedNum}
 };
 
-const NUMBER_SPRITESHEET: &Graphics = include_aseprite!("graphics/Numbers.aseprite");
-const NUMBER_SPRITELIST: &[Sprite] = NUMBER_SPRITESHEET.sprites();
+static NUMBER_SPRITESHEET: &Graphics = include_aseprite!("graphics/Numbers.aseprite");
+static NUMBER_SPRITELIST: &[Sprite] = NUMBER_SPRITESHEET.sprites();
 
 const DIGIT_AMOUNT: usize = 5;
 const DIGIT_SPREAD_PX: i32 = 2;

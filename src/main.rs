@@ -28,11 +28,11 @@ use alloc::vec::Vec;
 use score_writer::{Writer, create_writer};
 use sounds::start_bgm;
 
-const FRUIT_SPRITESHEET: &Graphics = include_aseprite!("graphics/Fruits.ase");
-const FRUIT_SPRITELIST: &[Sprite] = FRUIT_SPRITESHEET.sprites();
+static FRUIT_SPRITESHEET: &Graphics = include_aseprite!("graphics/Fruits.ase");
+static FRUIT_SPRITELIST: &[Sprite] = FRUIT_SPRITESHEET.sprites();
 
-const GUP_SPRITESHEET: &Graphics = include_aseprite!("graphics/gup.ase");
-const GUP_SPRITELIST: &[Sprite] = GUP_SPRITESHEET.sprites();
+static GUP_SPRITESHEET: &Graphics = include_aseprite!("graphics/gup.ase");
+static GUP_SPRITELIST: &[Sprite] = GUP_SPRITESHEET.sprites();
 
 include_background_gfx!(background_sprite, tiles_source => "graphics/Background.aseprite");
 
@@ -56,7 +56,7 @@ fn main(mut gba: agb::Gba) -> ! {
     let mut input = agb::input::ButtonController::new();
 
     //Set up background
-    let background_tileset = background_sprite::tiles_source.tiles;
+    let background_tileset = &background_sprite::tiles_source.tiles;
     vram.set_background_palettes(background_sprite::PALETTES);
     let mut background_map = gfx.background(
         agb::display::Priority::P0,
@@ -65,7 +65,7 @@ fn main(mut gba: agb::Gba) -> ! {
     );
     background_map.fill_with(&mut vram, &background_sprite::tiles_source);
     background_map.commit(&mut vram);
-    background_map.show();
+    background_map.set_visible(true);
 
     //Load Fruit sprites
     //let fruit_sprites: [SpriteVram; FRUIT_SPRITELIST.len()] = [oam.sprite(&FRUIT_SPRITELIST[i]); FRUIT_SPRITELIST.len()];
