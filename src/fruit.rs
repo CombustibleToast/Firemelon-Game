@@ -19,6 +19,24 @@ pub struct FruitStaticInfo{
     pub previous_score: i32,
 }
 
+enum PhsyicsSimulationStateStep{
+    Complete,
+    FindingCollisions,
+    MergingCollisions,
+    ResolvingCollisions
+}
+
+struct PhsyicsSimulationState{
+    step: PhsyicsSimulationStateStep,
+    index: i32,
+}
+
+static PHYS: PhsyicsSimulationState = PhsyicsSimulationState {
+    step: PhsyicsSimulationStateStep::Complete,
+    index: 0,
+};
+
+
 const SPRITE_SIZE: i32 = 64;
 const FRUIT_DIAMETERS: [i32; 11] = [9, 11, 15, 18, 22, 29, 32, 39, 42, 53, 64];
 // const FRUIT_VALUES: [i32; 11] = [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66]; //Idk if this is right, taken from https://gaming.stackexchange.com/questions/405265/how-does-scoring-work-in-suika-game
@@ -360,6 +378,7 @@ pub fn update_all_fruits<'a>(fruits: &mut Vec<Fruit<'a>>, oam: &'a OamManaged, s
     try_merge_collisions(&mut collisions, fruits, oam, sprites, fruit_static_info);
     resolve_collisions(&mut collisions, fruits);
 
+    //recalculate score
     fruit_static_info.previous_score = fruit_static_info.current_score;
     fruit_static_info.current_score = 0; //recalculate score
     for _i in 0..fruits.len(){
